@@ -19,6 +19,9 @@ const router = Router();
  *               - name
  *               - email
  *               - password
+ *               - birthDate
+ *               - gender
+ *               - phoneNumber
  *             properties:
  *               name:
  *                 type: string
@@ -29,6 +32,17 @@ const router = Router();
  *               password:
  *                 type: string
  *                 example: 123456
+ *               birthDate:
+ *                 type: string
+ *                 format: date
+ *                 example: 1990-01-01
+ *               gender:
+ *                 type: string
+ *                 enum: [male, female, other]
+ *                 example: male
+ *               phoneNumber:
+ *                 type: string
+ *                 example: "+1234567890"
  *     responses:
  *       201:
  *         description: User created successfully

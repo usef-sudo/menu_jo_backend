@@ -1,6 +1,5 @@
-import "dotenv/config";
-
-import { db } from "../db/client";
+import "../config/env";
+import { db } from "../config/db";
 import {
   areas,
   branches,
@@ -127,7 +126,7 @@ async function seedCategories() {
       descriptionEn: "Burger and fast casual spots",
       descriptionAr: "مطاعم البرغر والوجبات السريعة",
       icon: "burger",
-      imageUrl: null,
+      imageUrl: "https://placehold.co/600x400?text=Burgers",
       displayOrder: 1,
       isActive: 1,
     })
@@ -141,7 +140,7 @@ async function seedCategories() {
       descriptionEn: "Cafés and coffee houses",
       descriptionAr: "المقاهي ومحلات القهوة",
       icon: "coffee",
-      imageUrl: null,
+      imageUrl: "https://placehold.co/600x400?text=Coffee",
       displayOrder: 2,
       isActive: 1,
     })
@@ -155,7 +154,7 @@ async function seedCategories() {
       descriptionEn: "Dessert, cakes, ice cream",
       descriptionAr: "حلويات، كيك، آيس كريم",
       icon: "dessert",
-      imageUrl: null,
+      imageUrl: "https://placehold.co/600x400?text=Dessert",
       displayOrder: 3,
       isActive: 1,
     })
@@ -168,7 +167,7 @@ async function seedCategories() {
       descriptionEn: "Middle Eastern grills and shawarma.",
       descriptionAr: "مطاعم الشاورما والمشاوي.",
       icon: "shawarma",
-      imageUrl: null,
+      imageUrl: "https://placehold.co/600x400?text=Shawarma",
       displayOrder: 4,
       isActive: 1,
     })
@@ -182,7 +181,7 @@ async function seedCategories() {
       descriptionEn: "Pizzerias and Italian casual.",
       descriptionAr: "مطاعم البيتزا والمأكولات الإيطالية.",
       icon: "pizza",
-      imageUrl: null,
+      imageUrl: "https://placehold.co/600x400?text=Pizza",
       displayOrder: 5,
       isActive: 1,
     })
@@ -196,7 +195,7 @@ async function seedCategories() {
       descriptionEn: "Sushi, noodles and Asian fusion.",
       descriptionAr: "سوشي، نودلز ومطابخ آسيوية متنوعة.",
       icon: "asian",
-      imageUrl: null,
+      imageUrl: "https://placehold.co/600x400?text=Asian",
       displayOrder: 6,
       isActive: 1,
     })
@@ -210,7 +209,7 @@ async function seedCategories() {
       descriptionEn: "Breakfast spots and brunch cafés.",
       descriptionAr: "مطاعم ومقاهي الفطور والبرنش.",
       icon: "breakfast",
-      imageUrl: null,
+      imageUrl: "https://placehold.co/600x400?text=Breakfast",
       displayOrder: 7,
       isActive: 1,
     })
@@ -237,7 +236,7 @@ async function seedRestaurants(args: {
       name_ar: "برغر هب",
       description_en: "Craft burgers & fries.",
       description_ar: "برغر مميز وبطاطا مقلية.",
-      logoUrl: null,
+      logoUrl: "https://placehold.co/200x200?text=Burger+Hub",
       phone: "+962790000001",
     })
     .returning();
@@ -249,7 +248,7 @@ async function seedRestaurants(args: {
       name_ar: "جافا هاوس",
       description_en: "Specialty coffee and pastries.",
       description_ar: "قهوة مميزة ومعجنات.",
-      logoUrl: null,
+      logoUrl: "https://placehold.co/200x200?text=Java+House",
       phone: "+962790000002",
     })
     .returning();
@@ -261,7 +260,7 @@ async function seedRestaurants(args: {
       name_ar: "سويت سبوت",
       description_en: "Dessert bar and gelato.",
       description_ar: "حلويات وجيلاتو.",
-      logoUrl: null,
+      logoUrl: "https://placehold.co/200x200?text=Sweet+Spot",
       phone: "+962790000003",
     })
     .returning();
@@ -273,7 +272,7 @@ async function seedRestaurants(args: {
       name_ar: "شاورما كينغ",
       description_en: "Classic chicken and beef shawarma.",
       description_ar: "شاورما دجاج ولحم على الطريقة التقليدية.",
-      logoUrl: null,
+      logoUrl: "https://placehold.co/200x200?text=Shawarma+King",
       phone: "+962790000004",
     })
     .returning();
@@ -285,7 +284,7 @@ async function seedRestaurants(args: {
       name_ar: "بيتزا بالاس",
       description_en: "Wood-fired pizzas and pasta.",
       description_ar: "بيتزا على الحطب ومكرونات.",
-      logoUrl: null,
+      logoUrl: "https://placehold.co/200x200?text=Pizza+Palace",
       phone: "+962790000005",
     })
     .returning();
@@ -297,7 +296,7 @@ async function seedRestaurants(args: {
       name_ar: "سوشي كورنر",
       description_en: "Rolls, sashimi and poke bowls.",
       description_ar: "لفائف السوشي، الساشيمي وأطباق البوكي.",
-      logoUrl: null,
+      logoUrl: "https://placehold.co/200x200?text=Sushi+Corner",
       phone: "+962790000006",
     })
     .returning();
@@ -309,7 +308,7 @@ async function seedRestaurants(args: {
       name_ar: "صن رايز كافيه",
       description_en: "All‑day breakfast and brunch.",
       description_ar: "فطور وبرنش طوال اليوم.",
-      logoUrl: null,
+      logoUrl: "https://placehold.co/200x200?text=Sunrise+Cafe",
       phone: "+962790000007",
     })
     .returning();
@@ -358,9 +357,9 @@ async function seedRestaurants(args: {
 
   console.log("Seeding restaurant photos...");
   const samplePhotos: string[] = [
-    "https://picsum.photos/800/600?photo=1",
-    "https://picsum.photos/800/600?photo=2",
-    "https://picsum.photos/800/600?photo=3",
+    "https://placehold.co/800x600?text=Restaurant+Photo+1",
+    "https://placehold.co/800x600?text=Restaurant+Photo+2",
+    "https://placehold.co/800x600?text=Restaurant+Photo+3",
   ];
 
   const allRestaurantIds: string[] = Object.values(restaurantsWithIds).map(
@@ -546,18 +545,18 @@ async function seedBranches(args: {
   // Seed simple menu images for each branch using placeholder URLs
   console.log("Seeding menu images...");
   const sampleImages: string[] = [
-    "https://picsum.photos/800/1200?menu=1",
-    "https://picsum.photos/800/1200?menu=2",
-    "https://picsum.photos/800/1200?menu=3",
+    "https://placehold.co/800x1200?text=Menu+Page+1",
+    "https://placehold.co/800x1200?text=Menu+Page+2",
+    "https://placehold.co/800x1200?text=Menu+Page+3",
   ];
 
   const allBranchIds: string[] = Object.values(branchesWithIds).map(
     (b) => b.id as string,
   );
 
-  for (finalBranchId of allBranchIds) {
+  for (const branchId of allBranchIds) {
     const values = sampleImages.map((url, index) => ({
-      branchId: finalBranchId,
+      branchId,
       imageUrl: url,
       displayOrder: index + 1,
       isActive: 1,

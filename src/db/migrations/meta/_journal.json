@@ -43,6 +43,13 @@
       "when": 1767465990359,
       "tag": "0005_chilly_devos",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1773434123005,
+      "tag": "0006_previous_stark_industries",
+      "breakpoints": true
     }
   ]
 }

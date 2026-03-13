@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { UsersService } from "../users/user.service";
+import { UsersService, CreateUserDTO } from "../users/user.service";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 
@@ -17,7 +17,38 @@ function signAccessToken(user: any) {
 export const UsersController = {
   async create(req: Request, res: Response, next: NextFunction) {
     try {
-      const dto = req.body;
+      const body = req.body as {
+        name?: string;
+        email?: string;
+        password?: string;
+        birthDate?: string;
+        gender?: string;
+        phoneNumber?: string;
+      };
+
+      if (
+        !body.email ||
+        !body.password ||
+        !body.birthDate ||
+        !body.gender ||
+        !body.phoneNumber
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "email, password, birthDate, gender and phoneNumber are required",
+        });
+      }
+
+      const dto: CreateUserDTO = {
+        name: body.name,
+        email: body.email,
+        password: body.password,
+        birthDate: body.birthDate,
+        gender: body.gender,
+        phoneNumber: body.phoneNumber,
+      };
+
       const user = await UsersService.create(dto);
       return res.status(201).json(user);
     } catch (err) {

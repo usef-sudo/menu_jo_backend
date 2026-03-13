@@ -7,6 +7,9 @@ export interface CreateUserDTO {
   name?: string;
   email: string;
   password: string; // include password for registration
+  birthDate: string;
+  gender: string;
+  phoneNumber: string;
 }
 
 export const UsersService = {
@@ -20,6 +23,9 @@ export const UsersService = {
         email: dto.email,
         password: hashedPassword,
         role: "user",
+        birthDate: dto.birthDate ?? null,
+        gender: dto.gender ?? null,
+        phoneNumber: dto.phoneNumber ?? null,
       })
       .returning();
     return row;
