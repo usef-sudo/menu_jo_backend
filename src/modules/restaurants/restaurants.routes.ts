@@ -92,32 +92,31 @@ router.get("/", RestaurantsController.list);
  *     responses:
  *       200:
  *         description: Restaurant details
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 id:
- *                   type: string
- *                   format: uuid
- *                 nameEn:
- *                   type: string
- *                 nameAr:
- *                   type: string
- *                 logoUrl:
- *                   type: string
- *                 descriptionEn:
- *                   type: string
- *                 descriptionAr:
- *                   type: string
- *                 phone:
- *                   type: string
- *                 createdAt:
- *                   type: string
- *                   format: date-time
  *       404:
  *         description: Restaurant not found
  */
 router.get("/:id", RestaurantsController.getOne);
+
+/**
+ * @swagger
+ * /api/restaurants/{id}/details:
+ *   get:
+ *     summary: Get full restaurant details including branches and facilities
+ *     tags: [Restaurants]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Restaurant ID
+ *     responses:
+ *       200:
+ *         description: Restaurant details with aggregates
+ *       404:
+ *         description: Restaurant not found
+ */
+router.get("/:id/details", RestaurantsController.getDetails);
 
 export default router;

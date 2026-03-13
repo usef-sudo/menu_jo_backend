@@ -409,6 +409,8 @@ async function seedBranches(args: {
       longitude: "35.9457",
       costLevel: 2,
       isOpen: 1,
+      openTime: "11:00",
+      closeTime: "23:00",
     })
     .returning();
 
@@ -424,6 +426,8 @@ async function seedBranches(args: {
       longitude: "35.8770",
       costLevel: 3,
       isOpen: 1,
+      openTime: "11:00",
+      closeTime: "23:00",
     })
     .returning();
 
@@ -439,6 +443,8 @@ async function seedBranches(args: {
       longitude: "35.9390",
       costLevel: 2,
       isOpen: 1,
+      openTime: "08:00",
+      closeTime: "22:00",
     })
     .returning();
 
@@ -454,6 +460,8 @@ async function seedBranches(args: {
       longitude: "35.8810",
       costLevel: 3,
       isOpen: 1,
+      openTime: "10:00",
+      closeTime: "00:00",
     })
     .returning();
 
@@ -469,6 +477,8 @@ async function seedBranches(args: {
       longitude: "35.9100",
       costLevel: 1,
       isOpen: 1,
+      openTime: "12:00",
+      closeTime: "01:00",
     })
     .returning();
 
@@ -484,6 +494,8 @@ async function seedBranches(args: {
       longitude: "35.9320",
       costLevel: 2,
       isOpen: 1,
+      openTime: "11:00",
+      closeTime: "23:30",
     })
     .returning();
 
@@ -499,6 +511,8 @@ async function seedBranches(args: {
       longitude: "35.8800",
       costLevel: 4,
       isOpen: 1,
+      openTime: "12:00",
+      closeTime: "23:30",
     })
     .returning();
 
@@ -514,6 +528,8 @@ async function seedBranches(args: {
       longitude: "35.8600",
       costLevel: 2,
       isOpen: 1,
+      openTime: "07:00",
+      closeTime: "15:00",
     })
     .returning();
 

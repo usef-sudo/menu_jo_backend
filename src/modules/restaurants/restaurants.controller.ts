@@ -25,4 +25,14 @@ export const RestaurantsController = {
       return res.json(rows);
     } catch (err) { next(err); }
   },
+
+  async getDetails(req: Request, res: Response, next: NextFunction) {
+    try {
+      const r = await RestaurantsService.getDetails(req.params.id);
+      if (!r) return res.status(404).json({ message: "Not found" });
+      return res.json(r);
+    } catch (err) {
+      next(err);
+    }
+  },
 };

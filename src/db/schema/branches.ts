@@ -15,6 +15,10 @@ export const branches = pgTable("branches", {
   latitude: text("latitude"),
   longitude: text("longitude"),
 
+  // opening hours (simple strings, e.g. "11:00")
+  openTime: varchar("open_time", { length: 16 }),
+  closeTime: varchar("close_time", { length: 16 }),
+
   // for sorting & filtering
   costLevel: integer("cost_level"), // 1 cheap - 5 expensive
   isOpen: integer("is_open").default(1),

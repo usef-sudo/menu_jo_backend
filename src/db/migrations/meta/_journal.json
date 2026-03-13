@@ -50,6 +50,13 @@
       "when": 1773434123005,
       "tag": "0006_previous_stark_industries",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1773436633953,
+      "tag": "0007_elite_shinobi_shaw",
+      "breakpoints": true
     }
   ]
 }

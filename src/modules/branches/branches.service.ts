@@ -1,5 +1,5 @@
 import { db } from "../../db/client";
-import { branches, branchFacilities, menuImages } from "../../db/schema";
+import { branches, branchFacilities, menuImages, facilities } from "../../db/schema";
 import { eq, sql, or, ilike } from "drizzle-orm";
 import { and } from "drizzle-orm";
 import { asc } from "drizzle-orm"; // Added asc and desc imports
@@ -15,6 +15,8 @@ export interface CreateBranchDTO {
   facilityIds?: string[];
   costLevel?: number;
   isOpen?: number;
+  openTime?: string;
+  closeTime?: string;
 }
 
 export const BranchesService = {
@@ -28,7 +30,9 @@ export const BranchesService = {
       latitude: dto.latitude ?? null,
       longitude: dto.longitude ?? null,
       costLevel: dto.costLevel ?? 1,
-      isOpen: dto.isOpen ?? 1
+      isOpen: dto.isOpen ?? 1,
+      openTime: dto.openTime ?? null,
+      closeTime: dto.closeTime ?? null,
     }).returning();
 
     if (dto.facilityIds && dto.facilityIds.length) {
@@ -61,8 +65,42 @@ export const BranchesService = {
     }
 
     // Build the query
-    const query = db.select()
-      .from(branches);
+    const query = db.select({
+      id: branches.id,
+      restaurantId: branches.restaurantId,
+      areaId: branches.areaId,
+      nameEn: branches.name_en,
+      nameAr: branches.name_ar,
+      address: branches.address,
+      latitude: branches.latitude,
+      longitude: branches.longitude,
+      costLevel: branches.costLevel,
+      isOpen: branches.isOpen,
+      upVotes: branches.upVotes,
+      downVotes: branches.downVotes,
+      openTime: branches.openTime,
+      closeTime: branches.closeTime,
+      facilities: sql<string[]>`COALESCE(array_agg(DISTINCT ${facilities.name_en}) FILTER (WHERE ${facilities.name_en} IS NOT NULL), ARRAY[]::text[])`,
+    })
+      .from(branches)
+      .leftJoin(branchFacilities, eq(branchFacilities.branchId, branches.id))
+      .leftJoin(facilities, eq(branchFacilities.facilityId, facilities.id))
+      .groupBy(
+        branches.id,
+        branches.restaurantId,
+        branches.areaId,
+        branches.name_en,
+        branches.name_ar,
+        branches.address,
+        branches.latitude,
+        branches.longitude,
+        branches.costLevel,
+        branches.isOpen,
+        branches.upVotes,
+        branches.downVotes,
+        branches.openTime,
+        branches.closeTime,
+      );
 
     if (whereCondition) {
       query.where(whereCondition);

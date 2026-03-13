@@ -1,6 +1,14 @@
 import { db } from "../../db/client";
-import { restaurants, restaurantCategories } from "../../db/schema";
-import { eq, and, sql, ilike, or } from "drizzle-orm"; // Added sql and ilike imports
+import {
+  restaurants,
+  restaurantCategories,
+  categories,
+  branches,
+  branchFacilities,
+  facilities,
+  reviews,
+} from "../../db/schema";
+import { eq, and, sql, ilike, or } from "drizzle-orm";
 
 export interface CreateRestaurantDTO {
   nameEn: string;
@@ -81,5 +89,83 @@ export const RestaurantsService = {
       .from(restaurants)
       .limit(limit)
       .offset(offset);
+  },
+
+  async getDetails(id: string) {
+    const restaurant = await this.findById(id);
+    if (!restaurant) {
+      return null;
+    }
+
+    const [categoryRow] = await db
+      .select({
+        id: categories.id,
+        nameEn: categories.nameEn,
+      })
+      .from(restaurantCategories)
+      .innerJoin(
+        categories,
+        eq(restaurantCategories.categoryId, categories.id),
+      )
+      .where(eq(restaurantCategories.restaurantId, id))
+      .limit(1);
+
+    const branchRows = await db
+      .select()
+      .from(branches)
+      .where(eq(branches.restaurantId, id));
+
+    const totalVotes = branchRows.reduce(
+      (sum, b) => sum + (b.upVotes ?? 0) + (b.downVotes ?? 0),
+      0,
+    );
+
+    const facilityRows = await db
+      .selectDistinct({
+        id: facilities.id,
+        nameEn: facilities.name_en,
+        icon: facilities.icon,
+      })
+      .from(branchFacilities)
+      .innerJoin(branches, eq(branchFacilities.branchId, branches.id))
+      .innerJoin(facilities, eq(branchFacilities.facilityId, facilities.id))
+      .where(eq(branches.restaurantId, id));
+
+    return {
+      id: restaurant.id,
+      nameEn: restaurant.name_en,
+      nameAr: restaurant.name_ar,
+      descriptionEn: restaurant.description_en,
+      descriptionAr: restaurant.description_ar,
+      logoUrl: restaurant.logoUrl,
+      phone: restaurant.phone,
+      createdAt: restaurant.createdAt,
+      category: categoryRow ?? null,
+      branches: branchRows,
+      facilities: facilityRows,
+      branchesCount: branchRows.length,
+      totalVotes,
+      // rating aggregates across all reviews on branches of this restaurant
+      ...(await (async () => {
+        const ratingRows = await db
+          .select({
+            rating: sql<number>`reviews.rating`,
+          })
+          .from(reviews)
+          .innerJoin(branches, eq(reviews.branchId, branches.id))
+          .where(eq(branches.restaurantId, id));
+
+        if (!ratingRows.length) {
+          return { avgRating: 0, reviewsCount: 0 };
+        }
+
+        const sum = ratingRows.reduce(
+          (acc, row) => acc + (row.rating ?? 0),
+          0,
+        );
+        const count = ratingRows.length;
+        return { avgRating: sum / count, reviewsCount: count };
+      })()),
+    };
   },
 };
