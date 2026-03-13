@@ -19,6 +19,7 @@ import facilitiesRoutes from "./modules/facilities/facilities.routes";
 import areasRoutes from "./modules/areas/areas.routes";
 import branchFacilitiesRoutes from "./modules/branchFacilities/branchFacilities.routes";
 import menuImagesRoutes from "./modules/menuImages/menuImage.routes";
+import restaurantPhotosRoutes from "./modules/restaurantPhotos/restaurantPhotos.routes";
 import uploadRoutes from "./modules/uploader/uploader.routes";
 
 import swaggerUi from "swagger-ui-express";
@@ -57,6 +58,7 @@ app.use("/api/restaurants", restaurantsRoutes);
 app.use("/api/branches", branchesRoutes);
 app.use("/api/branches", branchFacilitiesRoutes); // Mount at /api/branches to extend branch routes
 app.use("/api", menuImagesRoutes); // Mount at /api because the router has specific paths
+app.use("/api", restaurantPhotosRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/votes", votesRoutes);
 app.use("/api/offers", offersRoutes);

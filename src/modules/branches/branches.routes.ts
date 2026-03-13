@@ -86,6 +86,41 @@ router.get("/", BranchesController.list);
 
 /**
  * @swagger
+ * /api/branches/nearby:
+ *   get:
+ *     summary: List nearby branches sorted by distance
+ *     tags: [Branches]
+ *     parameters:
+ *       - in: query
+ *         name: lat
+ *         required: true
+ *         schema:
+ *           type: number
+ *         description: User latitude
+ *       - in: query
+ *         name: lng
+ *         required: true
+ *         schema:
+ *           type: number
+ *         description: User longitude
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *     responses:
+ *       200:
+ *         description: List of nearby branches with distanceKm
+ */
+router.get("/nearby", BranchesController.listNearby);
+
+/**
+ * @swagger
  * /api/branches/{id}:
  *   get:
  *     summary: Get a branch by ID

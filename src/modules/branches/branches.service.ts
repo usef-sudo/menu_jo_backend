@@ -73,6 +73,41 @@ export const BranchesService = {
       .offset(offset);
   },
 
+  async listNearby(lat: number, lng: number, limit = 50, offset = 0) {
+    const rows = await this.list({}, limit, offset);
+
+    const toRadians = (deg: number) => (deg * Math.PI) / 180;
+
+    const withDistance = rows
+      .map((b: any) => {
+        if (!b.latitude || !b.longitude) {
+          return { ...b, distanceKm: null };
+        }
+        const lat1 = Number.parseFloat(b.latitude);
+        const lon1 = Number.parseFloat(b.longitude);
+        const lat2 = lat;
+        const lon2 = lng;
+
+        const R = 6371; // km
+        const dLat = toRadians(lat2 - lat1);
+        const dLon = toRadians(lon2 - lon1);
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(toRadians(lat1)) *
+            Math.cos(toRadians(lat2)) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const d = R * c;
+
+        return { ...b, distanceKm: Number(d.toFixed(2)) };
+      })
+      .filter((b) => b.distanceKm !== null)
+      .sort((a, b) => a.distanceKm - b.distanceKm);
+
+    return withDistance;
+  },
+
   async incrementVoteCounters(branchId: string, up: number, down: number) {
     // Use sql template literal for raw SQL expressions
     await db.update(branches)

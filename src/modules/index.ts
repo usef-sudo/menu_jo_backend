@@ -12,6 +12,8 @@ import votesRoutes from "./votes/vote.routes";
 import areasRoutes from "../modules/areas/areas.routes";
 import menuImagesRoutes from "../modules/menuImages/menuImage.routes";
 import uploadRoutes from "../modules/uploader/uploader.routes";
+import favoritesRoutes from "../modules/favorites/favorites.routes";
+import reviewsRoutes from "../modules/reviews/reviews.routes";
 
 const router = Router();
 
@@ -27,6 +29,8 @@ router.use("/votes", votesRoutes);
 router.use("/areas", areasRoutes);
 router.use("/menu-images", menuImagesRoutes);
 router.use("/uploader", uploadRoutes);
+router.use("/favorites", favoritesRoutes);
+router.use("/reviews", reviewsRoutes);
 
 
 export default router;

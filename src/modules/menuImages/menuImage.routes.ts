@@ -1,7 +1,7 @@
 // src/modules/menuImages/menuImage.routes.ts
 import express from "express";
 import { MenuImagesController } from "./menuImage.controller";
-import { authMiddleware } from "../../middlewares/auth.middleware";
+import { authMiddleware, adminMiddleware } from "../../middlewares/auth.middleware";
 
 const router = express.Router();
 
@@ -93,7 +93,7 @@ router.get("/branches/:branchId/menu-images", MenuImagesController.getByBranch);
  *       401:
  *         description: Unauthorized
  */
-router.post("/branches/:branchId/menu-images", authMiddleware, MenuImagesController.upload);
+router.post("/branches/:branchId/menu-images", authMiddleware, adminMiddleware, MenuImagesController.upload);
 
 /**
  * @swagger
@@ -139,7 +139,7 @@ router.post("/branches/:branchId/menu-images", authMiddleware, MenuImagesControl
  *       401:
  *         description: Unauthorized
  */
-router.post("/branches/:branchId/menu-images/batch", authMiddleware, MenuImagesController.uploadMultiple);
+router.post("/branches/:branchId/menu-images/batch", authMiddleware, adminMiddleware, MenuImagesController.uploadMultiple);
 
 /**
  * @swagger
@@ -178,7 +178,7 @@ router.post("/branches/:branchId/menu-images/batch", authMiddleware, MenuImagesC
  *       401:
  *         description: Unauthorized
  */
-router.put("/menu-images/:id", authMiddleware, MenuImagesController.update);
+router.put("/menu-images/:id", authMiddleware, adminMiddleware, MenuImagesController.update);
 
 /**
  * @swagger
@@ -204,7 +204,7 @@ router.put("/menu-images/:id", authMiddleware, MenuImagesController.update);
  *       401:
  *         description: Unauthorized
  */
-router.delete("/menu-images/:id", authMiddleware, MenuImagesController.delete);
+router.delete("/menu-images/:id", authMiddleware, adminMiddleware, MenuImagesController.delete);
 
 /**
  * @swagger
@@ -245,6 +245,6 @@ router.delete("/menu-images/:id", authMiddleware, MenuImagesController.delete);
  *       401:
  *         description: Unauthorized
  */
-router.post("/branches/:branchId/menu-images/reorder", authMiddleware, MenuImagesController.reorder);
+router.post("/branches/:branchId/menu-images/reorder", authMiddleware, adminMiddleware, MenuImagesController.reorder);
 
 export default router;

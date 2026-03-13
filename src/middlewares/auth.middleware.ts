@@ -4,14 +4,13 @@ import jwt from "jsonwebtoken";
 interface JwtPayload {
   id: string;
   email?: string;
+  role?: string;
 }
-
-
 
 export const authMiddleware = (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const authHeader = req.headers.authorization;
@@ -27,10 +26,12 @@ export const authMiddleware = (
 
     const decoded = jwt.verify(
       token,
-      process.env.JWT_SECRET as string
+      process.env.JWT_SECRET as string,
     ) as JwtPayload;
 
-    req.user = decoded;
+    // Attach user info to request for downstream handlers
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (req as any).user = decoded;
 
     next();
   } catch (error) {
@@ -39,4 +40,20 @@ export const authMiddleware = (
       message: "Unauthorized: Invalid token",
     });
   }
+};
+
+export const adminMiddleware = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const user = (req as any).user as JwtPayload | undefined;
+  if (!user || user.role !== "admin") {
+    return res.status(403).json({
+      success: false,
+      message: "Forbidden: Admin access required",
+    });
+  }
+  return next();
 };
