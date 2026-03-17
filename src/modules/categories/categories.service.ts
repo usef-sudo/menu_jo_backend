@@ -79,7 +79,8 @@ export const CategoriesService = {
   async list(language: 'en' | 'ar' = 'en', activeOnly = true, limit = 100, offset = 0) {
     const baseQuery = db.select({
       id: categories.id,
-      name: language === 'ar' ? categories.nameAr : categories.nameEn,
+      nameEn: categories.nameEn,
+      nameAr: categories.nameAr,
       description: language === 'ar' ? categories.descriptionAr : categories.descriptionEn,
       icon: categories.icon,
       imageUrl: categories.imageUrl,
@@ -102,10 +103,11 @@ export const CategoriesService = {
   async search(queryText: string, language: 'en' | 'ar' = 'en', limit = 50) {
     const nameField = language === 'ar' ? categories.nameAr : categories.nameEn;
     const descField = language === 'ar' ? categories.descriptionAr : categories.descriptionEn;
-    
+
     return await db.select({
       id: categories.id,
-      name: nameField,
+      nameEn: categories.nameEn,
+      nameAr: categories.nameAr,
       description: descField,
       icon: categories.icon,
       imageUrl: categories.imageUrl,

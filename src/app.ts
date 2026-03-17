@@ -21,6 +21,7 @@ import branchFacilitiesRoutes from "./modules/branchFacilities/branchFacilities.
 import menuImagesRoutes from "./modules/menuImages/menuImage.routes";
 import restaurantPhotosRoutes from "./modules/restaurantPhotos/restaurantPhotos.routes";
 import uploadRoutes from "./modules/uploader/uploader.routes";
+import reviewsRoutes from "./modules/reviews/reviews.routes";
 
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger";
@@ -65,6 +66,7 @@ app.use("/api/offers", offersRoutes);
 app.use("/api/categories", categoriesRoutes);
 app.use("/api/facilities", facilitiesRoutes);
 app.use("/api/areas", areasRoutes);
+app.use("/api/reviews", reviewsRoutes);
 
 // Global error handler (MUST be last)
 app.use(errorMiddleware);
