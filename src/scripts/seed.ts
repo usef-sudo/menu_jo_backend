@@ -113,7 +113,16 @@ async function seedFacilities() {
     })
     .returning();
 
-  return { wifi, parking, kids };
+  const [outdoor] = await db
+    .insert(facilities)
+    .values({
+      name_en: "Outdoor Seating",
+      name_ar: "جلسات خارجية",
+      icon: "outdoor",
+    })
+    .returning();
+
+  return { wifi, parking, kids, outdoor };
 }
 
 async function seedCategories() {
@@ -126,7 +135,7 @@ async function seedCategories() {
       descriptionEn: "Burger and fast casual spots",
       descriptionAr: "مطاعم البرغر والوجبات السريعة",
       icon: "burger",
-      imageUrl: "https://placehold.co/600x400?text=Burgers",
+      imageUrl: "https://images.pexels.com/photos/1639562/pexels-photo-1639562.jpeg?auto=compress&cs=tinysrgb&w=800",
       displayOrder: 1,
       isActive: 1,
     })
@@ -140,7 +149,7 @@ async function seedCategories() {
       descriptionEn: "Cafés and coffee houses",
       descriptionAr: "المقاهي ومحلات القهوة",
       icon: "coffee",
-      imageUrl: "https://placehold.co/600x400?text=Coffee",
+      imageUrl: "https://images.pexels.com/photos/2396220/pexels-photo-2396220.jpeg?auto=compress&cs=tinysrgb&w=800",
       displayOrder: 2,
       isActive: 1,
     })
@@ -154,7 +163,7 @@ async function seedCategories() {
       descriptionEn: "Dessert, cakes, ice cream",
       descriptionAr: "حلويات، كيك، آيس كريم",
       icon: "dessert",
-      imageUrl: "https://placehold.co/600x400?text=Dessert",
+      imageUrl: "https://images.pexels.com/photos/3026808/pexels-photo-3026808.jpeg?auto=compress&cs=tinysrgb&w=800",
       displayOrder: 3,
       isActive: 1,
     })
@@ -167,7 +176,7 @@ async function seedCategories() {
       descriptionEn: "Middle Eastern grills and shawarma.",
       descriptionAr: "مطاعم الشاورما والمشاوي.",
       icon: "shawarma",
-      imageUrl: "https://placehold.co/600x400?text=Shawarma",
+      imageUrl: "https://images.pexels.com/photos/6546025/pexels-photo-6546025.jpeg?auto=compress&cs=tinysrgb&w=800",
       displayOrder: 4,
       isActive: 1,
     })
@@ -181,7 +190,7 @@ async function seedCategories() {
       descriptionEn: "Pizzerias and Italian casual.",
       descriptionAr: "مطاعم البيتزا والمأكولات الإيطالية.",
       icon: "pizza",
-      imageUrl: "https://placehold.co/600x400?text=Pizza",
+      imageUrl: "https://images.pexels.com/photos/825661/pexels-photo-825661.jpeg?auto=compress&cs=tinysrgb&w=800",
       displayOrder: 5,
       isActive: 1,
     })
@@ -195,7 +204,7 @@ async function seedCategories() {
       descriptionEn: "Sushi, noodles and Asian fusion.",
       descriptionAr: "سوشي، نودلز ومطابخ آسيوية متنوعة.",
       icon: "asian",
-      imageUrl: "https://placehold.co/600x400?text=Asian",
+      imageUrl: "https://images.pexels.com/photos/888973/pexels-photo-888973.jpeg?auto=compress&cs=tinysrgb&w=800",
       displayOrder: 6,
       isActive: 1,
     })
@@ -209,7 +218,7 @@ async function seedCategories() {
       descriptionEn: "Breakfast spots and brunch cafés.",
       descriptionAr: "مطاعم ومقاهي الفطور والبرنش.",
       icon: "breakfast",
-      imageUrl: "https://placehold.co/600x400?text=Breakfast",
+      imageUrl: "https://images.pexels.com/photos/3756523/pexels-photo-3756523.jpeg?auto=compress&cs=tinysrgb&w=800",
       displayOrder: 7,
       isActive: 1,
     })
@@ -236,7 +245,7 @@ async function seedRestaurants(args: {
       name_ar: "برغر هب",
       description_en: "Craft burgers & fries.",
       description_ar: "برغر مميز وبطاطا مقلية.",
-      logoUrl: "https://placehold.co/200x200?text=Burger+Hub",
+      logoUrl: "https://images.pexels.com/photos/1639562/pexels-photo-1639562.jpeg?auto=compress&cs=tinysrgb&w=400",
       phone: "+962790000001",
     })
     .returning();
@@ -248,7 +257,7 @@ async function seedRestaurants(args: {
       name_ar: "جافا هاوس",
       description_en: "Specialty coffee and pastries.",
       description_ar: "قهوة مميزة ومعجنات.",
-      logoUrl: "https://placehold.co/200x200?text=Java+House",
+      logoUrl: "https://images.pexels.com/photos/2396220/pexels-photo-2396220.jpeg?auto=compress&cs=tinysrgb&w=400",
       phone: "+962790000002",
     })
     .returning();
@@ -260,7 +269,7 @@ async function seedRestaurants(args: {
       name_ar: "سويت سبوت",
       description_en: "Dessert bar and gelato.",
       description_ar: "حلويات وجيلاتو.",
-      logoUrl: "https://placehold.co/200x200?text=Sweet+Spot",
+      logoUrl: "https://images.pexels.com/photos/3026808/pexels-photo-3026808.jpeg?auto=compress&cs=tinysrgb&w=400",
       phone: "+962790000003",
     })
     .returning();
@@ -272,7 +281,7 @@ async function seedRestaurants(args: {
       name_ar: "شاورما كينغ",
       description_en: "Classic chicken and beef shawarma.",
       description_ar: "شاورما دجاج ولحم على الطريقة التقليدية.",
-      logoUrl: "https://placehold.co/200x200?text=Shawarma+King",
+      logoUrl: "https://images.pexels.com/photos/6546025/pexels-photo-6546025.jpeg?auto=compress&cs=tinysrgb&w=400",
       phone: "+962790000004",
     })
     .returning();
@@ -284,7 +293,7 @@ async function seedRestaurants(args: {
       name_ar: "بيتزا بالاس",
       description_en: "Wood-fired pizzas and pasta.",
       description_ar: "بيتزا على الحطب ومكرونات.",
-      logoUrl: "https://placehold.co/200x200?text=Pizza+Palace",
+      logoUrl: "https://images.pexels.com/photos/825661/pexels-photo-825661.jpeg?auto=compress&cs=tinysrgb&w=400",
       phone: "+962790000005",
     })
     .returning();
@@ -296,7 +305,7 @@ async function seedRestaurants(args: {
       name_ar: "سوشي كورنر",
       description_en: "Rolls, sashimi and poke bowls.",
       description_ar: "لفائف السوشي، الساشيمي وأطباق البوكي.",
-      logoUrl: "https://placehold.co/200x200?text=Sushi+Corner",
+      logoUrl: "https://images.pexels.com/photos/888973/pexels-photo-888973.jpeg?auto=compress&cs=tinysrgb&w=400",
       phone: "+962790000006",
     })
     .returning();
@@ -308,7 +317,7 @@ async function seedRestaurants(args: {
       name_ar: "صن رايز كافيه",
       description_en: "All‑day breakfast and brunch.",
       description_ar: "فطور وبرنش طوال اليوم.",
-      logoUrl: "https://placehold.co/200x200?text=Sunrise+Cafe",
+      logoUrl: "https://images.pexels.com/photos/3756523/pexels-photo-3756523.jpeg?auto=compress&cs=tinysrgb&w=400",
       phone: "+962790000007",
     })
     .returning();
@@ -357,9 +366,9 @@ async function seedRestaurants(args: {
 
   console.log("Seeding restaurant photos...");
   const samplePhotos: string[] = [
-    "https://placehold.co/800x600?text=Restaurant+Photo+1",
-    "https://placehold.co/800x600?text=Restaurant+Photo+2",
-    "https://placehold.co/800x600?text=Restaurant+Photo+3",
+    "https://images.pexels.com/photos/67468/pexels-photo-67468.jpeg?auto=compress&cs=tinysrgb&w=800",
+    "https://images.pexels.com/photos/941864/pexels-photo-941864.jpeg?auto=compress&cs=tinysrgb&w=800",
+    "https://images.pexels.com/photos/696218/pexels-photo-696218.jpeg?auto=compress&cs=tinysrgb&w=800",
   ];
 
   const allRestaurantIds: string[] = Object.values(restaurantsWithIds).map(
@@ -394,6 +403,7 @@ async function seedBranches(args: {
   wifiId: string;
   parkingId: string;
   kidsId: string;
+  outdoorId: string;
 }) {
   console.log("Seeding branches...");
 
@@ -411,6 +421,8 @@ async function seedBranches(args: {
       isOpen: 1,
       openTime: "11:00",
       closeTime: "23:00",
+      upVotes: 120,
+      downVotes: 8,
     })
     .returning();
 
@@ -425,9 +437,11 @@ async function seedBranches(args: {
       latitude: "31.9632",
       longitude: "35.8770",
       costLevel: 3,
-      isOpen: 1,
+      isOpen: 0,
       openTime: "11:00",
       closeTime: "23:00",
+      upVotes: 45,
+      downVotes: 3,
     })
     .returning();
 
@@ -445,6 +459,8 @@ async function seedBranches(args: {
       isOpen: 1,
       openTime: "08:00",
       closeTime: "22:00",
+      upVotes: 95,
+      downVotes: 5,
     })
     .returning();
 
@@ -462,6 +478,8 @@ async function seedBranches(args: {
       isOpen: 1,
       openTime: "10:00",
       closeTime: "00:00",
+      upVotes: 78,
+      downVotes: 6,
     })
     .returning();
 
@@ -479,6 +497,8 @@ async function seedBranches(args: {
       isOpen: 1,
       openTime: "12:00",
       closeTime: "01:00",
+      upVotes: 200,
+      downVotes: 12,
     })
     .returning();
 
@@ -496,6 +516,8 @@ async function seedBranches(args: {
       isOpen: 1,
       openTime: "11:00",
       closeTime: "23:30",
+      upVotes: 65,
+      downVotes: 4,
     })
     .returning();
 
@@ -510,9 +532,11 @@ async function seedBranches(args: {
       latitude: "31.9690",
       longitude: "35.8800",
       costLevel: 4,
-      isOpen: 1,
+      isOpen: 0,
       openTime: "12:00",
       closeTime: "23:30",
+      upVotes: 88,
+      downVotes: 7,
     })
     .returning();
 
@@ -530,21 +554,30 @@ async function seedBranches(args: {
       isOpen: 1,
       openTime: "07:00",
       closeTime: "15:00",
+      upVotes: 52,
+      downVotes: 2,
     })
     .returning();
 
-  // Attach facilities
+  // Attach facilities (richer coverage for filter testing)
   await db.insert(branchFacilities).values([
     { branchId: burgerDowntown.id, facilityId: args.wifiId },
     { branchId: burgerDowntown.id, facilityId: args.parkingId },
+    { branchId: burgerDowntown.id, facilityId: args.outdoorId },
     { branchId: burgerWest.id, facilityId: args.parkingId },
+    { branchId: burgerWest.id, facilityId: args.wifiId },
     { branchId: javaDowntown.id, facilityId: args.wifiId },
+    { branchId: javaDowntown.id, facilityId: args.outdoorId },
     { branchId: sweetWest.id, facilityId: args.wifiId },
     { branchId: sweetWest.id, facilityId: args.kidsId },
+    { branchId: sweetWest.id, facilityId: args.outdoorId },
     { branchId: shawarmaDowntown.id, facilityId: args.parkingId },
     { branchId: pizzaDowntown.id, facilityId: args.parkingId },
+    { branchId: pizzaDowntown.id, facilityId: args.wifiId },
     { branchId: sushiWest.id, facilityId: args.wifiId },
+    { branchId: sushiWest.id, facilityId: args.outdoorId },
     { branchId: sunriseWest.id, facilityId: args.wifiId },
+    { branchId: sunriseWest.id, facilityId: args.outdoorId },
   ]);
 
   const branchesWithIds = {
@@ -588,6 +621,8 @@ async function seedOffers(restaurantIds: string[]) {
   console.log("Seeding offers...");
   const now = new Date();
   const nextMonth = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const startDate = now.toISOString().slice(0, 10);
+  const endDate = nextMonth.toISOString().slice(0, 10);
 
   await db.insert(offers).values(
     [
@@ -595,57 +630,64 @@ async function seedOffers(restaurantIds: string[]) {
         restaurantId: restaurantIds[0],
         title: "2x1 Burger Tuesdays",
         description: "Buy one burger, get another free every Tuesday.",
-        imageUrl: null,
-        startDate: now,
-        endDate: nextMonth,
+        imageUrl:
+          "https://images.pexels.com/photos/1639562/pexels-photo-1639562.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        startDate,
+        endDate,
       },
       {
         restaurantId: restaurantIds[1],
         title: "Happy Hour Coffee",
         description: "50% off espresso-based drinks from 5–7 PM.",
-        imageUrl: null,
-        startDate: now,
-        endDate: nextMonth,
+        imageUrl:
+          "https://images.pexels.com/photos/2396220/pexels-photo-2396220.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        startDate,
+        endDate,
       },
       {
         restaurantId: restaurantIds[2],
         title: "Dessert Sampler",
         description: "Try three desserts for the price of two.",
-        imageUrl: null,
-        startDate: now,
-        endDate: nextMonth,
+        imageUrl:
+          "https://images.pexels.com/photos/3026808/pexels-photo-3026808.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        startDate,
+        endDate,
       },
       {
         restaurantId: restaurantIds[3],
         title: "Family Shawarma Combo",
         description: "Family platter with 4 sandwiches, fries and drinks.",
-        imageUrl: null,
-        startDate: now,
-        endDate: nextMonth,
+        imageUrl:
+          "https://images.pexels.com/photos/6546025/pexels-photo-6546025.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        startDate,
+        endDate,
       },
       {
         restaurantId: restaurantIds[4],
         title: "Pizza Night",
         description: "Any large pizza + free appetizer.",
-        imageUrl: null,
-        startDate: now,
-        endDate: nextMonth,
+        imageUrl:
+          "https://images.pexels.com/photos/825661/pexels-photo-825661.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        startDate,
+        endDate,
       },
       {
         restaurantId: restaurantIds[5],
         title: "Sushi Wednesday",
         description: "All‑you‑can‑eat sushi rolls every Wednesday.",
-        imageUrl: null,
-        startDate: now,
-        endDate: nextMonth,
+        imageUrl:
+          "https://images.pexels.com/photos/888973/pexels-photo-888973.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        startDate,
+        endDate,
       },
       {
         restaurantId: restaurantIds[6],
         title: "Brunch Bundle",
         description: "Brunch for two with coffee included.",
-        imageUrl: null,
-        startDate: now,
-        endDate: nextMonth,
+        imageUrl:
+          "https://images.pexels.com/photos/3756523/pexels-photo-3756523.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        startDate,
+        endDate,
       },
     ] as any,
   );
@@ -663,7 +705,7 @@ async function main() {
 
     const user = await seedUsers();
     const { downtown, west } = await seedAreas();
-    const { wifi, parking, kids } = await seedFacilities();
+    const { wifi, parking, kids, outdoor } = await seedFacilities();
     const {
       burgers,
       coffee,
@@ -705,6 +747,7 @@ async function main() {
       wifiId: wifi.id,
       parkingId: parking.id,
       kidsId: kids.id,
+      outdoorId: outdoor.id,
     });
 
     await seedOffers([

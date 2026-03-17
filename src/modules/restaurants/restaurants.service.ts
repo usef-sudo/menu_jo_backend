@@ -8,7 +8,7 @@ import {
   facilities,
   reviews,
 } from "../../db/schema";
-import { eq, and, sql, ilike, or } from "drizzle-orm";
+import { eq, and, sql, ilike, or, gte, lte, desc, inArray } from "drizzle-orm";
 
 export interface CreateRestaurantDTO {
   nameEn: string;
@@ -49,22 +49,37 @@ export const RestaurantsService = {
       .then((r) => r[0] || null);
   },
 
-  async list(filter: { categoryId?: string; search?: string } = {}, limit = 50, offset = 0) {
-    // Handle search filter
+  async list(
+    filter: {
+      categoryId?: string;
+      search?: string;
+      minCostLevel?: number;
+      maxCostLevel?: number;
+      openOnly?: boolean;
+      sort?: string;
+      facilityIds?: string[];
+    } = {},
+    limit = 50,
+    offset = 0,
+  ) {
+    // Simple text search on name
     if (filter.search) {
-      return await db.select()
+      return await db
+        .select()
         .from(restaurants)
-        .where(or(
-          ilike(restaurants.name_en, `%${filter.search}%`),
-          ilike(restaurants.name_ar, `%${filter.search}%`)
-        ))
+        .where(
+          or(
+            ilike(restaurants.name_en, `%${filter.search}%`),
+            ilike(restaurants.name_ar, `%${filter.search}%`),
+          ),
+        )
         .limit(limit)
         .offset(offset);
     }
 
-    // Handle category filter with join
-    if (filter.categoryId) {
-      return await db.select({
+    // Base query with branches aggregated for cost / votes / open flag
+    let query = db
+      .select({
         id: restaurants.id,
         nameEn: restaurants.name_en,
         nameAr: restaurants.name_ar,
@@ -72,23 +87,62 @@ export const RestaurantsService = {
         descriptionAr: restaurants.description_ar,
         logoUrl: restaurants.logoUrl,
         phone: restaurants.phone,
-        createdAt: restaurants.createdAt
+        createdAt: restaurants.createdAt,
+        // averages and aggregates from branches
+        costLevel: sql<number>`avg(${branches.costLevel})`,
+        votes: sql<number>`sum(coalesce(${branches.upVotes}, 0) - coalesce(${branches.downVotes}, 0))`,
+        isOpen: sql<number>`max(coalesce(${branches.isOpen}, 0))`,
       })
-        .from(restaurants)
-        .innerJoin(
-          restaurantCategories,
-          eq(restaurantCategories.restaurantId, restaurants.id)
-        )
-        .where(eq(restaurantCategories.categoryId, filter.categoryId))
-        .limit(limit)
-        .offset(offset);
+      .from(restaurants)
+      .leftJoin(branches, eq(branches.restaurantId, restaurants.id));
+
+    const conditions = [];
+
+    if (filter.categoryId) {
+      query = query.innerJoin(
+        restaurantCategories,
+        eq(restaurantCategories.restaurantId, restaurants.id),
+      );
+      conditions.push(eq(restaurantCategories.categoryId, filter.categoryId));
     }
 
-    // Default: return all restaurants
-    return await db.select()
-      .from(restaurants)
+    if (filter.facilityIds && filter.facilityIds.length > 0) {
+      query = query.innerJoin(
+        branchFacilities,
+        eq(branchFacilities.branchId, branches.id),
+      );
+      conditions.push(inArray(branchFacilities.facilityId, filter.facilityIds));
+    }
+
+    if (filter.minCostLevel != null) {
+      conditions.push(gte(branches.costLevel, filter.minCostLevel));
+    }
+
+    if (filter.maxCostLevel != null) {
+      conditions.push(lte(branches.costLevel, filter.maxCostLevel));
+    }
+
+    if (filter.openOnly) {
+      conditions.push(eq(branches.isOpen, 1));
+    }
+
+    const whereClause =
+      conditions.length === 0 ? undefined : and(...conditions);
+
+    const sortKey = (filter.sort || "").toLowerCase();
+
+    const rows = await query
+      .where(whereClause)
+      .groupBy(restaurants.id)
+      .orderBy(
+        sortKey === "votes"
+          ? desc(sql`votes`)
+          : desc(restaurants.createdAt),
+      )
       .limit(limit)
       .offset(offset);
+
+    return rows;
   },
 
   async getDetails(id: string) {
