@@ -11,6 +11,7 @@ import {
   offers,
   restaurants,
   restaurantCategories,
+  reviews,
   users,
 } from "../db/schema";
 import { eq } from "drizzle-orm";
@@ -20,6 +21,7 @@ async function clearExisting() {
   console.log("Clearing existing data...");
 
   // Order matters because of FKs
+  await db.delete(reviews);
   await db.delete(menuImages);
   await db.delete(restaurantPhotos);
   await db.delete(restaurantCategories);
@@ -365,18 +367,24 @@ async function seedRestaurants(args: {
   };
 
   console.log("Seeding restaurant photos...");
-  const samplePhotos: string[] = [
-    "https://images.pexels.com/photos/67468/pexels-photo-67468.jpeg?auto=compress&cs=tinysrgb&w=800",
-    "https://images.pexels.com/photos/941864/pexels-photo-941864.jpeg?auto=compress&cs=tinysrgb&w=800",
-    "https://images.pexels.com/photos/696218/pexels-photo-696218.jpeg?auto=compress&cs=tinysrgb&w=800",
+  const photoSets: string[][] = [
+    ["https://images.pexels.com/photos/1639562/pexels-photo-1639562.jpeg?auto=compress&cs=tinysrgb&w=800", "https://images.pexels.com/photos/825661/pexels-photo-825661.jpeg?auto=compress&cs=tinysrgb&w=800", "https://images.pexels.com/photos/67468/pexels-photo-67468.jpeg?auto=compress&cs=tinysrgb&w=800"],
+    ["https://images.pexels.com/photos/2396220/pexels-photo-2396220.jpeg?auto=compress&cs=tinysrgb&w=800", "https://images.pexels.com/photos/3026808/pexels-photo-3026808.jpeg?auto=compress&cs=tinysrgb&w=800", "https://images.pexels.com/photos/3756523/pexels-photo-3756523.jpeg?auto=compress&cs=tinysrgb&w=800"],
+    ["https://images.pexels.com/photos/3026808/pexels-photo-3026808.jpeg?auto=compress&cs=tinysrgb&w=800", "https://images.pexels.com/photos/2396220/pexels-photo-2396220.jpeg?auto=compress&cs=tinysrgb&w=800", "https://images.pexels.com/photos/67468/pexels-photo-67468.jpeg?auto=compress&cs=tinysrgb&w=800"],
+    ["https://images.pexels.com/photos/6546025/pexels-photo-6546025.jpeg?auto=compress&cs=tinysrgb&w=800", "https://images.pexels.com/photos/1639562/pexels-photo-1639562.jpeg?auto=compress&cs=tinysrgb&w=800", "https://images.pexels.com/photos/825661/pexels-photo-825661.jpeg?auto=compress&cs=tinysrgb&w=800"],
+    ["https://images.pexels.com/photos/825661/pexels-photo-825661.jpeg?auto=compress&cs=tinysrgb&w=800", "https://images.pexels.com/photos/1639562/pexels-photo-1639562.jpeg?auto=compress&cs=tinysrgb&w=800", "https://images.pexels.com/photos/3026808/pexels-photo-3026808.jpeg?auto=compress&cs=tinysrgb&w=800"],
+    ["https://images.pexels.com/photos/888973/pexels-photo-888973.jpeg?auto=compress&cs=tinysrgb&w=800", "https://images.pexels.com/photos/6546025/pexels-photo-6546025.jpeg?auto=compress&cs=tinysrgb&w=800", "https://images.pexels.com/photos/67468/pexels-photo-67468.jpeg?auto=compress&cs=tinysrgb&w=800"],
+    ["https://images.pexels.com/photos/3756523/pexels-photo-3756523.jpeg?auto=compress&cs=tinysrgb&w=800", "https://images.pexels.com/photos/2396220/pexels-photo-2396220.jpeg?auto=compress&cs=tinysrgb&w=800", "https://images.pexels.com/photos/3026808/pexels-photo-3026808.jpeg?auto=compress&cs=tinysrgb&w=800"],
   ];
 
   const allRestaurantIds: string[] = Object.values(restaurantsWithIds).map(
     (r) => r.id as string,
   );
 
-  for (const restaurantId of allRestaurantIds) {
-    const values = samplePhotos.map((url, index) => ({
+  for (let i = 0; i < allRestaurantIds.length; i++) {
+    const restaurantId = allRestaurantIds[i];
+    const photos = photoSets[i % photoSets.length];
+    const values = photos.map((url, index) => ({
       restaurantId,
       imageUrl: url,
       caption: null,
@@ -591,12 +599,12 @@ async function seedBranches(args: {
     sunriseWest,
   };
 
-  // Seed simple menu images for each branch using placeholder URLs
+  // Seed menu images for each branch (Pexels CDN - same working URLs as offers/categories)
   console.log("Seeding menu images...");
   const sampleImages: string[] = [
-    "https://placehold.co/800x1200?text=Menu+Page+1",
-    "https://placehold.co/800x1200?text=Menu+Page+2",
-    "https://placehold.co/800x1200?text=Menu+Page+3",
+    "https://images.pexels.com/photos/1639562/pexels-photo-1639562.jpeg?auto=compress&cs=tinysrgb&w=800",
+    "https://images.pexels.com/photos/825661/pexels-photo-825661.jpeg?auto=compress&cs=tinysrgb&w=800",
+    "https://images.pexels.com/photos/3026808/pexels-photo-3026808.jpeg?auto=compress&cs=tinysrgb&w=800",
   ];
 
   const allBranchIds: string[] = Object.values(branchesWithIds).map(
@@ -615,6 +623,96 @@ async function seedBranches(args: {
   }
 
   return branchesWithIds;
+}
+
+async function seedReviews(
+  userId: string,
+  branchesWithIds: {
+    burgerDowntown: { id: string };
+    burgerWest: { id: string };
+    javaDowntown: { id: string };
+    sweetWest: { id: string };
+    shawarmaDowntown: { id: string };
+    pizzaDowntown: { id: string };
+    sushiWest: { id: string };
+    sunriseWest: { id: string };
+  },
+) {
+  console.log("Seeding reviews...");
+  await db.insert(reviews).values([
+    {
+      userId,
+      branchId: branchesWithIds.burgerDowntown.id,
+      rating: 5,
+      comment: "Best burgers in town! The fries are crispy and the portions are huge.",
+    },
+    {
+      userId,
+      branchId: branchesWithIds.burgerDowntown.id,
+      rating: 4,
+      comment: "Great quality, fast service. Would come again.",
+    },
+    {
+      userId,
+      branchId: branchesWithIds.javaDowntown.id,
+      rating: 5,
+      comment: "Amazing coffee and pastries. The atmosphere is perfect for working.",
+    },
+    {
+      userId,
+      branchId: branchesWithIds.sweetWest.id,
+      rating: 4,
+      comment: "Desserts are divine. The gelato is a must-try.",
+    },
+    {
+      userId,
+      branchId: branchesWithIds.shawarmaDowntown.id,
+      rating: 5,
+      comment: "Authentic shawarma, generous portions. Always fresh and delicious.",
+    },
+    {
+      userId,
+      branchId: branchesWithIds.shawarmaDowntown.id,
+      rating: 4,
+      comment: "Fast and tasty. Great value for money.",
+    },
+    {
+      userId,
+      branchId: branchesWithIds.pizzaDowntown.id,
+      rating: 4,
+      comment: "Wood-fired pizza is excellent. Nice variety of toppings.",
+    },
+    {
+      userId,
+      branchId: branchesWithIds.sushiWest.id,
+      rating: 5,
+      comment: "Fresh sushi, beautiful presentation. One of the best in the area.",
+    },
+    {
+      userId,
+      branchId: branchesWithIds.sushiWest.id,
+      rating: 4,
+      comment: null,
+    },
+    {
+      userId,
+      branchId: branchesWithIds.sunriseWest.id,
+      rating: 5,
+      comment: "Best brunch spot! The pancakes and coffee combo is perfect.",
+    },
+    {
+      userId,
+      branchId: branchesWithIds.burgerWest.id,
+      rating: 3,
+      comment: "Good but service was slow. Food quality is consistent with downtown.",
+    },
+    {
+      userId,
+      branchId: branchesWithIds.pizzaDowntown.id,
+      rating: 5,
+      comment: "Love the margherita. Will definitely be back.",
+    },
+  ]);
 }
 
 async function seedOffers(restaurantIds: string[]) {
@@ -734,7 +832,7 @@ async function main() {
       breakfastId: breakfast.id,
     });
 
-    await seedBranches({
+    const branchesWithIds = await seedBranches({
       burgerHubId: burgerHub.id,
       javaHouseId: javaHouse.id,
       sweetSpotId: sweetSpot.id,
@@ -749,6 +847,10 @@ async function main() {
       kidsId: kids.id,
       outdoorId: outdoor.id,
     });
+
+    if (user?.id) {
+      await seedReviews(user.id, branchesWithIds);
+    }
 
     await seedOffers([
       burgerHub.id,
