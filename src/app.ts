@@ -26,6 +26,7 @@ import uploadRoutes from "./modules/uploader/uploader.routes";
 import reviewsRoutes from "./modules/reviews/reviews.routes";
 import favoritesRoutes from "./modules/favorites/favorites.routes";
 import healthRoutes from "./modules/health/health.routes";
+import restaurantCategoriesRoutes from "./modules/restaurantCategories/restaurantCategories.routes";
 
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger";
@@ -80,6 +81,7 @@ app.use("/api/users", usersRoutes);
 app.use("/api/votes", votesRoutes);
 app.use("/api/offers", offersRoutes);
 app.use("/api/categories", categoriesRoutes);
+app.use("/api/restaurant-categories", restaurantCategoriesRoutes);
 app.use("/api/facilities", facilitiesRoutes);
 app.use("/api/areas", areasRoutes);
 app.use("/api/reviews", reviewsRoutes);

@@ -30,6 +30,26 @@ export const BranchesController = {
     } catch (err) { next(err); }
   },
 
+  async update(req: Request, res: Response, next: NextFunction) {
+    try {
+      const b = await BranchesService.update(req.params.id, req.body);
+      if (!b) return res.status(404).json({ message: "Not found" });
+      return res.json(b);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async delete(req: Request, res: Response, next: NextFunction) {
+    try {
+      const ok = await BranchesService.delete(req.params.id);
+      if (!ok) return res.status(404).json({ message: "Not found" });
+      return res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async listNearby(req: Request, res: Response, next: NextFunction) {
     try {
       const { lat, lng } = req.query as { lat?: string; lng?: string };

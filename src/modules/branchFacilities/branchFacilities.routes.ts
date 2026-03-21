@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { BranchFacilitiesController } from "./branchFacilities.controller";
-import { authMiddleware } from "../../middlewares/auth.middleware";
+import { authMiddleware, adminMiddleware } from "../../middlewares/auth.middleware";
 
 const router = Router({ mergeParams: true });
 
@@ -43,7 +43,19 @@ const router = Router({ mergeParams: true });
  *       401:
  *         description: Unauthorized
  */
-router.post("/:branchId/facilities", authMiddleware, BranchFacilitiesController.assign);
+router.get(
+  "/:branchId/facilities",
+  authMiddleware,
+  adminMiddleware,
+  BranchFacilitiesController.list,
+);
+
+router.post(
+  "/:branchId/facilities",
+  authMiddleware,
+  adminMiddleware,
+  BranchFacilitiesController.assign,
+);
 
 /**
  * @swagger
@@ -74,6 +86,11 @@ router.post("/:branchId/facilities", authMiddleware, BranchFacilitiesController.
  *       401:
  *         description: Unauthorized
  */
-router.delete("/:branchId/facilities/:facilityId", authMiddleware, BranchFacilitiesController.unassign);
+router.delete(
+  "/:branchId/facilities/:facilityId",
+  authMiddleware,
+  adminMiddleware,
+  BranchFacilitiesController.unassign,
+);
 
 export default router;

@@ -19,6 +19,20 @@ export interface CreateBranchDTO {
   closeTime?: string;
 }
 
+export interface UpdateBranchDTO {
+  restaurantId?: string;
+  areaId?: string | null;
+  nameEn?: string;
+  nameAr?: string;
+  address?: string | null;
+  latitude?: string | null;
+  longitude?: string | null;
+  costLevel?: number;
+  isOpen?: number;
+  openTime?: string | null;
+  closeTime?: string | null;
+}
+
 export const BranchesService = {
   async create(dto: CreateBranchDTO) {
     const [b] = await db.insert(branches).values({
@@ -40,6 +54,37 @@ export const BranchesService = {
       await db.insert(branchFacilities).values(pairs);
     }
     return b;
+  },
+
+  async update(id: string, dto: UpdateBranchDTO) {
+    const existing = await this.findById(id);
+    if (!existing) return null;
+
+    const patch: Partial<typeof branches.$inferInsert> = {};
+    if (dto.restaurantId !== undefined) patch.restaurantId = dto.restaurantId;
+    if (dto.areaId !== undefined) patch.areaId = dto.areaId;
+    if (dto.nameEn !== undefined) patch.name_en = dto.nameEn;
+    if (dto.nameAr !== undefined) patch.name_ar = dto.nameAr;
+    if (dto.address !== undefined) patch.address = dto.address ?? null;
+    if (dto.latitude !== undefined) patch.latitude = dto.latitude ?? null;
+    if (dto.longitude !== undefined) patch.longitude = dto.longitude ?? null;
+    if (dto.costLevel !== undefined) patch.costLevel = dto.costLevel;
+    if (dto.isOpen !== undefined) patch.isOpen = dto.isOpen;
+    if (dto.openTime !== undefined) patch.openTime = dto.openTime ?? null;
+    if (dto.closeTime !== undefined) patch.closeTime = dto.closeTime ?? null;
+
+    if (Object.keys(patch).length > 0) {
+      await db.update(branches).set(patch).where(eq(branches.id, id));
+    }
+
+    return await this.findById(id);
+  },
+
+  async delete(id: string) {
+    const existing = await this.findById(id);
+    if (!existing) return false;
+    await db.delete(branches).where(eq(branches.id, id));
+    return true;
   },
 
   async findById(id: string) {

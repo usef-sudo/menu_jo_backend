@@ -20,6 +20,17 @@ export interface CreateRestaurantDTO {
   categoryIds?: string[]; // many-to-many
 }
 
+export interface UpdateRestaurantDTO {
+  nameEn?: string;
+  nameAr?: string;
+  descriptionEn?: string | null;
+  descriptionAr?: string | null;
+  logoUrl?: string | null;
+  phone?: string | null;
+  /** When set, replaces all restaurant–category links. */
+  categoryIds?: string[];
+}
+
 export const RestaurantsService = {
   async create(dto: CreateRestaurantDTO) {
     const [row] = await db.insert(restaurants).values({
@@ -40,6 +51,46 @@ export const RestaurantsService = {
       await db.insert(restaurantCategories).values(pairs);
     }
     return row;
+  },
+
+  async update(id: string, dto: UpdateRestaurantDTO) {
+    const existing = await this.findById(id);
+    if (!existing) return null;
+
+    const patch: Partial<typeof restaurants.$inferInsert> = {};
+    if (dto.nameEn !== undefined) patch.name_en = dto.nameEn;
+    if (dto.nameAr !== undefined) patch.name_ar = dto.nameAr;
+    if (dto.descriptionEn !== undefined) patch.description_en = dto.descriptionEn;
+    if (dto.descriptionAr !== undefined) patch.description_ar = dto.descriptionAr;
+    if (dto.logoUrl !== undefined) patch.logoUrl = dto.logoUrl;
+    if (dto.phone !== undefined) patch.phone = dto.phone;
+
+    if (Object.keys(patch).length > 0) {
+      await db.update(restaurants).set(patch).where(eq(restaurants.id, id));
+    }
+
+    if (dto.categoryIds !== undefined) {
+      await db
+        .delete(restaurantCategories)
+        .where(eq(restaurantCategories.restaurantId, id));
+      if (dto.categoryIds.length > 0) {
+        await db.insert(restaurantCategories).values(
+          dto.categoryIds.map((categoryId) => ({
+            restaurantId: id,
+            categoryId,
+          })),
+        );
+      }
+    }
+
+    return await this.findById(id);
+  },
+
+  async delete(id: string) {
+    const existing = await this.findById(id);
+    if (!existing) return false;
+    await db.delete(restaurants).where(eq(restaurants.id, id));
+    return true;
   },
 
   async findById(id: string) {
@@ -151,18 +202,20 @@ export const RestaurantsService = {
       return null;
     }
 
-    const [categoryRow] = await db
+    const categoryRows = await db
       .select({
         id: categories.id,
         nameEn: categories.nameEn,
+        nameAr: categories.nameAr,
       })
       .from(restaurantCategories)
       .innerJoin(
         categories,
         eq(restaurantCategories.categoryId, categories.id),
       )
-      .where(eq(restaurantCategories.restaurantId, id))
-      .limit(1);
+      .where(eq(restaurantCategories.restaurantId, id));
+
+    const categoryRow = categoryRows[0] ?? null;
 
     const branchRows = await db
       .select()
@@ -195,6 +248,7 @@ export const RestaurantsService = {
       phone: restaurant.phone,
       createdAt: restaurant.createdAt,
       category: categoryRow ?? null,
+      categories: categoryRows,
       branches: branchRows,
       facilities: facilityRows,
       branchesCount: branchRows.length,

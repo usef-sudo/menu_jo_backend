@@ -6,6 +6,9 @@ export const RestaurantCategoriesController = {
     try {
       const { restaurantId } = req.params;
       const { categoryIds } = req.body;
+      if (!Array.isArray(categoryIds)) {
+        return res.status(400).json({ message: "categoryIds must be an array of UUIDs" });
+      }
       await RestaurantCategoriesService.assign(restaurantId, categoryIds);
       return res.status(204).send();
     } catch (err) { next(err); }

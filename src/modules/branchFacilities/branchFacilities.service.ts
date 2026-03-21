@@ -3,6 +3,14 @@ import { branchFacilities } from "../../db/schema";
 import { eq, and } from "drizzle-orm"; // Add these imports
 
 export const BranchFacilitiesService = {
+  async listAssigned(branchId: string) {
+    const rows = await db
+      .select({ facilityId: branchFacilities.facilityId })
+      .from(branchFacilities)
+      .where(eq(branchFacilities.branchId, branchId));
+    return rows.map((r) => r.facilityId);
+  },
+
   async assign(branchId: string, facilityIds: string[]) {
     const pairs = facilityIds.map((f) => ({ branchId: branchId, facilityId: f }));
     await db.insert(branchFacilities).values(pairs).onConflictDoNothing();

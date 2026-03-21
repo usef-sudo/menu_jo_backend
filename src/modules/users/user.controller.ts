@@ -50,7 +50,7 @@ export const UsersController = {
       };
 
       const user = await UsersService.create(dto);
-      return res.status(201).json(user);
+      return res.status(201).json(UsersService.toSafeUser(user));
     } catch (err) {
       next(err);
     }
@@ -60,7 +60,7 @@ export const UsersController = {
     try {
       const user = await UsersService.findById(req.params.id);
       if (!user) return res.status(404).json({ message: "User not found" });
-      return res.json(user);
+      return res.json(UsersService.toSafeUser(user));
     } catch (err) { next(err); }
   },
 
@@ -69,7 +69,7 @@ export const UsersController = {
       const limit = Number(req.query.limit || 50);
       const offset = Number(req.query.offset || 0);
       const rows = await UsersService.list(limit, offset);
-      return res.json(rows);
+      return res.json(rows.map((r) => UsersService.toSafeUser(r)));
     } catch (err) { next(err); }
   },
 

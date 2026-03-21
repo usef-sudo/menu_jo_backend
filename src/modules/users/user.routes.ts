@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { UsersController } from "../users/user.controller";
 import { authRouteLimiter } from "../../middlewares/rateLimit.middleware";
+import { authMiddleware, adminMiddleware } from "../../middlewares/auth.middleware";
 
 const router = Router();
 
@@ -49,41 +50,6 @@ const router = Router();
  *         description: User created successfully
  */
 router.post("/", authRouteLimiter, UsersController.create);
-
-/**
- * @swagger
- * /api/users:
- *   get:
- *     summary: Get all users
- *     tags: [Users]
- *     responses:
- *       200:
- *         description: List of users
- */
-router.get("/", UsersController.list);
-
-/**
- * @swagger
- * /api/users/{id}:
- *   get:
- *     summary: Get user by ID
- *     tags: [Users]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         example: 1
- *     responses:
- *       200:
- *         description: User details
- *       404:
- *         description: User not found
- */
-router.get("/:id", UsersController.getOne);
-
-
 
 /**
  * @swagger
@@ -194,6 +160,47 @@ router.post("/logout", authRouteLimiter, UsersController.logout);
  *         description: A generic success response
  */
 router.post("/forgot-password", authRouteLimiter, UsersController.forgotPassword);
+
+/**
+ * @swagger
+ * /api/users:
+ *   get:
+ *     summary: Get all users (admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of users
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+router.get("/", authMiddleware, adminMiddleware, UsersController.list);
+
+/**
+ * @swagger
+ * /api/users/{id}:
+ *   get:
+ *     summary: Get user by ID (admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: User details
+ *       404:
+ *         description: User not found
+ */
+router.get("/:id", authMiddleware, adminMiddleware, UsersController.getOne);
 
 export default router;
 

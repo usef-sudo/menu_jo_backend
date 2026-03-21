@@ -113,4 +113,11 @@ export const UsersService = {
       .set({ revokedAt: new Date() })
       .where(eq(refreshTokens.token, token));
   },
+
+  /** Strip password hash from API responses. */
+  toSafeUser(row: (typeof users.$inferSelect) | null) {
+    if (!row) return null;
+    const { password: _password, ...rest } = row;
+    return rest;
+  },
 };
