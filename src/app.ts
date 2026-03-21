@@ -3,10 +3,12 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import compression from "compression";
-import rateLimit from "express-rate-limit";
 
 // Middlewares
 import { errorMiddleware } from "./middlewares/error.middleware";
+import { globalApiLimiter } from "./middlewares/rateLimit.middleware";
+import { CORS_ORIGINS, ENABLE_SWAGGER, NODE_ENV } from "./config/env";
+import { logger } from "./config/logger";
 
 // Module routes
 import restaurantsRoutes from "./modules/restaurants/restaurants.routes";
@@ -22,34 +24,48 @@ import menuImagesRoutes from "./modules/menuImages/menuImage.routes";
 import restaurantPhotosRoutes from "./modules/restaurantPhotos/restaurantPhotos.routes";
 import uploadRoutes from "./modules/uploader/uploader.routes";
 import reviewsRoutes from "./modules/reviews/reviews.routes";
+import favoritesRoutes from "./modules/favorites/favorites.routes";
+import healthRoutes from "./modules/health/health.routes";
 
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger";
 
 const app: Application = express();
 
-// Global middlewares
-app.use(compression()); // Compress all responses
-app.use(cors());
-app.use(helmet());
-app.use(morgan("dev"));
+const corsOptions: cors.CorsOptions =
+  CORS_ORIGINS.length > 0
+    ? { origin: CORS_ORIGINS, credentials: true }
+    : { origin: true, credentials: true };
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-});
-app.use(limiter);
+if (CORS_ORIGINS.length === 0 && NODE_ENV === "production") {
+  logger.warn(
+    "CORS_ORIGINS is empty — permissive CORS; set CORS_ORIGINS for a strict browser allowlist",
+  );
+}
+
+// Global middlewares
+app.use(compression());
+app.use(cors(corsOptions));
+app.use(helmet());
+app.use(morgan(NODE_ENV === "production" ? "combined" : "dev"));
+
+app.use(globalApiLimiter);
 
 app.use("/api/upload", uploadRoutes);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Health check
+if (ENABLE_SWAGGER) {
+  app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+} else if (NODE_ENV === "production") {
+  logger.info("Swagger /api/docs disabled (set ENABLE_SWAGGER=true to enable)");
+}
+
+// Health (no auth; for load balancers / k8s)
+app.use("/api/health", healthRoutes);
+
+// Root
 app.get("/", (_req, res) => {
   res.json({ status: "Menu API running 🚀" });
 });
@@ -57,8 +73,8 @@ app.get("/", (_req, res) => {
 // Routes
 app.use("/api/restaurants", restaurantsRoutes);
 app.use("/api/branches", branchesRoutes);
-app.use("/api/branches", branchFacilitiesRoutes); // Mount at /api/branches to extend branch routes
-app.use("/api", menuImagesRoutes); // Mount at /api because the router has specific paths
+app.use("/api/branches", branchFacilitiesRoutes);
+app.use("/api", menuImagesRoutes);
 app.use("/api", restaurantPhotosRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/votes", votesRoutes);
@@ -67,8 +83,8 @@ app.use("/api/categories", categoriesRoutes);
 app.use("/api/facilities", facilitiesRoutes);
 app.use("/api/areas", areasRoutes);
 app.use("/api/reviews", reviewsRoutes);
+app.use("/api/favorites", favoritesRoutes);
 
-// Global error handler (MUST be last)
 app.use(errorMiddleware);
 
 export default app;

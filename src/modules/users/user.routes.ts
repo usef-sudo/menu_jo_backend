@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { UsersController } from "../users/user.controller";
+import { authRouteLimiter } from "../../middlewares/rateLimit.middleware";
 
 const router = Router();
 
@@ -47,7 +48,7 @@ const router = Router();
  *       201:
  *         description: User created successfully
  */
-router.post("/", UsersController.create);
+router.post("/", authRouteLimiter, UsersController.create);
 
 /**
  * @swagger
@@ -120,7 +121,7 @@ router.get("/:id", UsersController.getOne);
  *       401:
  *         description: Invalid email or password
  */
-router.post("/login", UsersController.login);
+router.post("/login", authRouteLimiter, UsersController.login);
 
 /**
  * @swagger
@@ -145,7 +146,7 @@ router.post("/login", UsersController.login);
  *       401:
  *         description: Invalid or expired refresh token
  */
-router.post("/refresh", UsersController.refreshToken);
+router.post("/refresh", authRouteLimiter, UsersController.refreshToken);
 
 /**
  * @swagger
@@ -168,7 +169,7 @@ router.post("/refresh", UsersController.refreshToken);
  *       200:
  *         description: Logged out successfully
  */
-router.post("/logout", UsersController.logout);
+router.post("/logout", authRouteLimiter, UsersController.logout);
 
 /**
  * @swagger
@@ -192,7 +193,7 @@ router.post("/logout", UsersController.logout);
  *       200:
  *         description: A generic success response
  */
-router.post("/forgot-password", UsersController.forgotPassword);
+router.post("/forgot-password", authRouteLimiter, UsersController.forgotPassword);
 
 export default router;
 

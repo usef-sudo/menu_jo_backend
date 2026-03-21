@@ -1,7 +1,7 @@
 
 import express from "express";
 import { CategoriesController } from "./categories.controller";
-import { authMiddleware } from "../../middlewares/auth.middleware";
+import { authMiddleware, adminMiddleware } from "../../middlewares/auth.middleware";
 
 const router = express.Router();
 
@@ -130,7 +130,7 @@ router.get("/:id", CategoriesController.getById);
  *       201:
  *         description: Category created successfully
  */
-router.post("/", authMiddleware, CategoriesController.create);
+router.post("/", authMiddleware, adminMiddleware, CategoriesController.create);
 /**
  * @swagger
  * /api/categories/with-image:
@@ -168,9 +168,14 @@ router.post("/", authMiddleware, CategoriesController.create);
  *       201:
  *         description: Category created with image successfully
  */
-router.post("/with-image", authMiddleware, CategoriesController.createWithImage);
+router.post(
+  "/with-image",
+  authMiddleware,
+  adminMiddleware,
+  CategoriesController.createWithImage,
+);
 
-router.put("/:id", authMiddleware, CategoriesController.update);
+router.put("/:id", authMiddleware, adminMiddleware, CategoriesController.update);
 /**
  * @swagger
  * /api/categories/{id}/with-image:
@@ -213,7 +218,12 @@ router.put("/:id", authMiddleware, CategoriesController.update);
  *         description: Category updated successfully
  */
 
-router.put("/:id/with-image", authMiddleware, CategoriesController.updateWithImage);
+router.put(
+  "/:id/with-image",
+  authMiddleware,
+  adminMiddleware,
+  CategoriesController.updateWithImage,
+);
 /**
  * @swagger
  * /api/categories/{id}:
@@ -233,7 +243,7 @@ router.put("/:id/with-image", authMiddleware, CategoriesController.updateWithIma
  *         description: Category deleted successfully
  */
 
-router.delete("/:id", authMiddleware, CategoriesController.delete);
+router.delete("/:id", authMiddleware, adminMiddleware, CategoriesController.delete);
 /**
  * @swagger
  * /api/categories/reorder:
@@ -258,7 +268,7 @@ router.delete("/:id", authMiddleware, CategoriesController.delete);
  *         description: Categories reordered successfully
  */
 
-router.post("/reorder", authMiddleware, CategoriesController.reorder);
+router.post("/reorder", authMiddleware, adminMiddleware, CategoriesController.reorder);
 
 export default router;
 

@@ -56,9 +56,25 @@ The server will start at `http://localhost:8000`.
 
 ## API Documentation
 
-The API Documentation is available via Swagger UI at:
+Swagger UI is at **[http://localhost:8000/api/docs](http://localhost:8000/api/docs)** in non-production, or when `ENABLE_SWAGGER=true`. In `NODE_ENV=production` it is **disabled** unless you set `ENABLE_SWAGGER=true`.
 
-**[http://localhost:8000/api/docs](http://localhost:8000/api/docs)**
+## Health checks (production)
+
+- `GET /api/health/live` — liveness (process up).
+- `GET /api/health/ready` — readiness (PostgreSQL reachable); returns `503` if the DB is down.
+
+## Production environment
+
+See `config.env.example` for:
+
+- `CORS_ORIGINS` — comma-separated browser origins (optional; empty = permissive with a warning in production logs).
+- `ENABLE_SWAGGER` — set `true` only if you intentionally expose docs in production.
+
+Structured JSON logs are emitted for `info` / `warn` via `src/config/logger.ts` when `NODE_ENV=production`. Combine with your log aggregator and alert on 5xx / high latency.
+
+## Database operations
+
+See **[docs/RUNBOOK_DB.md](docs/RUNBOOK_DB.md)** for migrations, backups, and restore outline.
 
 ## Project Structure
 

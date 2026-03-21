@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { FavoritesService } from "./favorites.service";
+import { RestaurantsService } from "../restaurants/restaurants.service";
 
 export const FavoritesController = {
   async list(req: Request, res: Response, next: NextFunction) {
@@ -26,6 +27,12 @@ export const FavoritesController = {
         return res
           .status(400)
           .json({ success: false, message: "restaurantId is required" });
+      }
+      const restaurant = await RestaurantsService.findById(restaurantId);
+      if (!restaurant) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Restaurant not found" });
       }
       await FavoritesService.add(userId, restaurantId);
       return res.status(204).send();

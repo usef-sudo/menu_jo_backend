@@ -15,6 +15,16 @@ function getEnv(key: string): string {
 
 export const PORT = getEnv("PORT");
 export const NODE_ENV = process.env.NODE_ENV || "development";
+
+/** Comma-separated allowed browser origins. Empty = reflect / permissive (OK for mobile-only APIs). */
+export const CORS_ORIGINS = (process.env.CORS_ORIGINS ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+/** In production, Swagger is off unless ENABLE_SWAGGER=true */
+export const ENABLE_SWAGGER =
+  process.env.ENABLE_SWAGGER === "true" || NODE_ENV !== "production";
 export const DB_USER = getEnv("DB_USER");
 export const DB_PASSWORD = getEnv("DB_PASSWORD");
 export const DB_HOST = getEnv("DB_HOST");

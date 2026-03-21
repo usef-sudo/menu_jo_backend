@@ -19,3 +19,6 @@ pool.on("error", (err) => {
 
 // Drizzle client
 export const db = drizzle(pool, { schema });
+
+/** For health checks and raw queries */
+export { pool };
