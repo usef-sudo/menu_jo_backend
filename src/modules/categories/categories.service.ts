@@ -81,7 +81,11 @@ export const CategoriesService = {
       id: categories.id,
       nameEn: categories.nameEn,
       nameAr: categories.nameAr,
+      /** Localized single field (backward compatible for clients). */
       description: language === 'ar' ? categories.descriptionAr : categories.descriptionEn,
+      /** Both locales for admin / rich clients. */
+      descriptionEn: categories.descriptionEn,
+      descriptionAr: categories.descriptionAr,
       icon: categories.icon,
       imageUrl: categories.imageUrl,
       isActive: categories.isActive,

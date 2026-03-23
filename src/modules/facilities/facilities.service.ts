@@ -3,7 +3,7 @@ import { facilities } from "../../db/schema";
 import { asc, eq } from "drizzle-orm";
 
 export const FacilitiesService = {
-  async create(payload: { nameEn: string; nameAr: string; icon?: string }) {
+  async create(payload: { nameEn: string; nameAr: string; icon?: string | null }) {
     const [r] = await db.insert(facilities).values({
       name_en: payload.nameEn,
       name_ar: payload.nameAr,

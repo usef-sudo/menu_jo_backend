@@ -7,15 +7,24 @@ import { uploadService } from "../uploader/uploader.service";
 export const CategoriesController = {
   async create(req: Request, res: Response, next: NextFunction) {
     try {
-      const { nameEn, nameAr, descriptionEn, descriptionAr, icon, displayOrder, isActive } = req.body;
-      
+      const { descriptionEn, descriptionAr, icon, displayOrder, isActive } = req.body;
+      const nameEn = String(req.body.nameEn ?? "").trim();
+      const nameAr = String(req.body.nameAr ?? "").trim();
+
       if (!nameEn || !nameAr) {
         return res.status(400).json({
           success: false,
           message: "Both English and Arabic names are required"
         });
       }
-      
+
+      if (nameEn.length > 255 || nameAr.length > 255) {
+        return res.status(400).json({
+          success: false,
+          message: "Names must be at most 255 characters",
+        });
+      }
+
       const category = await CategoriesService.create({
         nameEn,
         nameAr,
@@ -48,15 +57,9 @@ async createWithImage(req: Request, res: Response, next: NextFunction) {
         });
       }
 
-      const {
-        nameEn,
-        nameAr,
-        descriptionEn,
-        descriptionAr,
-        icon,
-        displayOrder,
-        isActive,
-      } = req.body;
+      const { descriptionEn, descriptionAr, icon, displayOrder, isActive } = req.body;
+      const nameEn = String(req.body.nameEn ?? "").trim();
+      const nameAr = String(req.body.nameAr ?? "").trim();
 
       if (!nameEn || !nameAr) {
         if (req.file) {
@@ -65,6 +68,16 @@ async createWithImage(req: Request, res: Response, next: NextFunction) {
         return res.status(400).json({
           success: false,
           message: "Both English and Arabic names are required",
+        });
+      }
+
+      if (nameEn.length > 255 || nameAr.length > 255) {
+        if (req.file) {
+          await uploadService.deleteFile((req.file as any).location);
+        }
+        return res.status(400).json({
+          success: false,
+          message: "Names must be at most 255 characters",
         });
       }
 
