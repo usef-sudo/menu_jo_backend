@@ -25,12 +25,19 @@ export const RestaurantPhotosController = {
   async create(req: Request, res: Response, next: NextFunction) {
     try {
       const { restaurantId } = req.params;
-      const { imageUrl, caption, displayOrder } = req.body;
+      const imageUrl = String(req.body.imageUrl ?? "").trim();
+      const { caption, displayOrder } = req.body;
 
       if (!imageUrl) {
         return res.status(400).json({
           success: false,
           message: "imageUrl is required",
+        });
+      }
+      if (imageUrl.length > 2048) {
+        return res.status(400).json({
+          success: false,
+          message: "imageUrl is too long",
         });
       }
 
