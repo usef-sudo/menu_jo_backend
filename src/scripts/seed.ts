@@ -4,6 +4,7 @@ import {
   areas,
   branches,
   branchFacilities,
+  branchOpeningHours,
   categories,
   facilities,
   menuImages,
@@ -27,6 +28,7 @@ async function clearExisting() {
   await db.delete(restaurantCategories);
   await db.delete(branchFacilities);
   await db.delete(offers);
+  await db.delete(branchOpeningHours);
   await db.delete(branches);
   await db.delete(restaurants);
   await db.delete(categories);
@@ -398,6 +400,78 @@ async function seedRestaurants(args: {
   return restaurantsWithIds;
 }
 
+/** Same rules as migration backfill: 00:00 close = end of day; else overnight if open >= close on clock. */
+function openingSlotForDay(
+  branchId: string,
+  dayOfWeek: number,
+  open: string,
+  close: string,
+): {
+  branchId: string;
+  dayOfWeek: number;
+  slotIndex: number;
+  openTime: string;
+  closeTime: string;
+  closesNextDay: number;
+} {
+  const oH = Number.parseInt(open.slice(0, 2), 10);
+  const oM = Number.parseInt(open.slice(3, 5), 10);
+  const cH = Number.parseInt(close.slice(0, 2), 10);
+  const cM = Number.parseInt(close.slice(3, 5), 10);
+  const o = oH * 60 + oM;
+  const c = cH * 60 + cM;
+  const closesNext =
+    close.trim() === "00:00" && open.trim() !== "00:00" ? 0 : o < c ? 0 : 1;
+  return {
+    branchId,
+    dayOfWeek,
+    slotIndex: 0,
+    openTime: open.slice(0, 5),
+    closeTime: close.slice(0, 5),
+    closesNextDay: closesNext,
+  };
+}
+
+function weeklySameEveryDay(
+  branchId: string,
+  open: string,
+  close: string,
+): ReturnType<typeof openingSlotForDay>[] {
+  return Array.from({ length: 7 }, (_, i) =>
+    openingSlotForDay(branchId, i + 1, open, close),
+  );
+}
+
+/** Mon–Fri and optional Sat–Sun (omit weekend = closed Sat–Sun). */
+function weeklyWeekdaysAndWeekend(
+  branchId: string,
+  weekday: { open: string; close: string },
+  weekend: { open: string; close: string } | null,
+): ReturnType<typeof openingSlotForDay>[] {
+  const rows: ReturnType<typeof openingSlotForDay>[] = [];
+  for (let d = 1; d <= 5; d++) {
+    rows.push(openingSlotForDay(branchId, d, weekday.open, weekday.close));
+  }
+  if (weekend) {
+    rows.push(openingSlotForDay(branchId, 6, weekend.open, weekend.close));
+    rows.push(openingSlotForDay(branchId, 7, weekend.open, weekend.close));
+  }
+  return rows;
+}
+
+/** Mon–Sat only (e.g. closed Sundays). */
+function weeklyMonThroughSat(
+  branchId: string,
+  open: string,
+  close: string,
+): ReturnType<typeof openingSlotForDay>[] {
+  const rows: ReturnType<typeof openingSlotForDay>[] = [];
+  for (let d = 1; d <= 6; d++) {
+    rows.push(openingSlotForDay(branchId, d, open, close));
+  }
+  return rows;
+}
+
 async function seedBranches(args: {
   burgerHubId: string;
   javaHouseId: string;
@@ -586,6 +660,24 @@ async function seedBranches(args: {
     { branchId: sushiWest.id, facilityId: args.outdoorId },
     { branchId: sunriseWest.id, facilityId: args.wifiId },
     { branchId: sunriseWest.id, facilityId: args.outdoorId },
+  ]);
+
+  console.log("Seeding branch opening hours...");
+  await db.insert(branchOpeningHours).values([
+    ...weeklySameEveryDay(burgerDowntown.id, "11:00", "23:00"),
+    ...weeklySameEveryDay(burgerWest.id, "11:00", "23:00"),
+    // Shorter hours on weekends
+    ...weeklyWeekdaysAndWeekend(
+      javaDowntown.id,
+      { open: "08:00", close: "22:00" },
+      { open: "09:00", close: "20:00" },
+    ),
+    ...weeklySameEveryDay(sweetWest.id, "10:00", "00:00"),
+    ...weeklySameEveryDay(shawarmaDowntown.id, "12:00", "01:00"),
+    ...weeklySameEveryDay(pizzaDowntown.id, "11:00", "23:30"),
+    // Closed Sundays
+    ...weeklyMonThroughSat(sushiWest.id, "12:00", "23:30"),
+    ...weeklySameEveryDay(sunriseWest.id, "07:00", "15:00"),
   ]);
 
   const branchesWithIds = {

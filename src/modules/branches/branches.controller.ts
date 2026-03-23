@@ -1,10 +1,61 @@
 import { Request, Response, NextFunction } from "express";
-import { BranchesService } from "./branches.service";
+import { BranchesService, parseHmToMinutes } from "./branches.service";
 import { isUuid, trimToNull } from "../shared/httpValidation";
+import type { OpeningHourInput } from "./branchOpeningHours.util";
 
 const MAX_NAME = 255;
 const MAX_ADDRESS = 500;
 const MAX_TIME = 16;
+
+const OPENING_HOUR_ERROR_MESSAGES: Record<string, string> = {
+  INVALID_DAY_OF_WEEK: "dayOfWeek must be 1–7 (Monday–Sunday)",
+  INVALID_SLOT_INDEX: "slotIndex must be between 0 and 10",
+  INVALID_TIME_FORMAT: "openTime and closeTime must be HH:MM (24h)",
+  SAME_DAY_REQUIRES_OPEN_BEFORE_CLOSE:
+    "For same-day hours, open must be before close (use closesNextDay for overnight)",
+  OVERNIGHT_REQUIRES_OPEN_AFTER_CLOSE_ON_CLOCK:
+    "Overnight hours must have open later than close on the clock (e.g. 22:00–02:00)",
+  DUPLICATE_OPENING_SLOT: "Duplicate dayOfWeek + slotIndex",
+};
+
+function openingHoursHttpMessage(err: unknown): string | null {
+  if (!(err instanceof Error)) return null;
+  return OPENING_HOUR_ERROR_MESSAGES[err.message] ?? null;
+}
+
+function parseOpeningHoursBody(raw: unknown): OpeningHourInput[] | undefined {
+  if (raw === undefined) return undefined;
+  if (!Array.isArray(raw)) {
+    throw new Error("INVALID_OPENING_HOURS");
+  }
+  const out: OpeningHourInput[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") {
+      throw new Error("INVALID_OPENING_HOURS");
+    }
+    const o = item as Record<string, unknown>;
+    const dayOfWeek = Number(o.dayOfWeek ?? o.day_of_week);
+    const slotIndex =
+      o.slotIndex !== undefined || o.slot_index !== undefined
+        ? Number(o.slotIndex ?? o.slot_index)
+        : undefined;
+    const openTime = String(o.openTime ?? o.open_time ?? "").trim();
+    const closeTime = String(o.closeTime ?? o.close_time ?? "").trim();
+    let closesNextDay = false;
+    if (o.closesNextDay !== undefined || o.closes_next_day !== undefined) {
+      const v = o.closesNextDay ?? o.closes_next_day;
+      closesNextDay = v === true || v === 1 || v === "1";
+    }
+    out.push({
+      dayOfWeek,
+      slotIndex,
+      openTime,
+      closeTime,
+      closesNextDay,
+    });
+  }
+  return out;
+}
 
 function parseFacilityIds(raw: unknown): string[] | undefined {
   if (raw === undefined) return undefined;
@@ -122,21 +173,40 @@ export const BranchesController = {
         });
       }
 
-      const b = await BranchesService.create({
-        restaurantId,
-        areaId: areaId === undefined ? undefined : areaId,
-        nameEn,
-        nameAr,
-        address: addressRaw ?? undefined,
-        latitude: latitude ?? undefined,
-        longitude: longitude ?? undefined,
-        costLevel,
-        isOpen,
-        openTime: openTimeRaw ?? undefined,
-        closeTime: closeTimeRaw ?? undefined,
-        facilityIds,
-      });
-      return res.status(201).json(b);
+      let openingHours: OpeningHourInput[] | undefined;
+      try {
+        openingHours = parseOpeningHoursBody(req.body.openingHours);
+      } catch {
+        return res.status(400).json({
+          success: false,
+          message: "openingHours must be an array of { dayOfWeek, openTime, closeTime, closesNextDay?, slotIndex? }",
+        });
+      }
+
+      try {
+        const b = await BranchesService.create({
+          restaurantId,
+          areaId: areaId === undefined ? undefined : areaId,
+          nameEn,
+          nameAr,
+          address: addressRaw ?? undefined,
+          latitude: latitude ?? undefined,
+          longitude: longitude ?? undefined,
+          costLevel,
+          isOpen,
+          openTime: openTimeRaw ?? undefined,
+          closeTime: closeTimeRaw ?? undefined,
+          facilityIds,
+          openingHours,
+        });
+        return res.status(201).json(b);
+      } catch (e: unknown) {
+        const friendly = openingHoursHttpMessage(e);
+        if (friendly) {
+          return res.status(400).json({ success: false, message: friendly });
+        }
+        throw e;
+      }
     } catch (err) {
       next(err);
     }
@@ -144,7 +214,7 @@ export const BranchesController = {
 
   async getOne(req: Request, res: Response, next: NextFunction) {
     try {
-      const b = await BranchesService.findById(req.params.id);
+      const b = await BranchesService.findByIdWithOpeningHours(req.params.id);
       if (!b) return res.status(404).json({ message: "Not found" });
       return res.json(b);
     } catch (err) {
@@ -154,9 +224,60 @@ export const BranchesController = {
 
   async list(req: Request, res: Response, next: NextFunction) {
     try {
-      const { restaurantId, areaId } = req.query as any;
+      const q = req.query as Record<string, string | undefined>;
+      const { restaurantId, areaId } = q;
+      const openAtWeekdayRaw = q.openAtWeekday ?? q.open_at_weekday;
+      const openAtTimeRaw = q.openAtTime ?? q.open_at_time;
+
+      let openAtWeekday: number | undefined;
+      let openAtTimeMinutes: number | undefined;
+
+      if (
+        openAtWeekdayRaw !== undefined &&
+        openAtWeekdayRaw !== "" &&
+        openAtTimeRaw !== undefined &&
+        openAtTimeRaw !== ""
+      ) {
+        const wd = Number.parseInt(String(openAtWeekdayRaw), 10);
+        if (!Number.isInteger(wd) || wd < 1 || wd > 7) {
+          return res.status(400).json({
+            success: false,
+            message: "openAtWeekday must be an integer 1 (Monday) through 7 (Sunday)",
+          });
+        }
+        const t = trimToNull(openAtTimeRaw);
+        if (!t) {
+          return res.status(400).json({
+            success: false,
+            message: "openAtTime is required with openAtWeekday (HH:MM, 24h)",
+          });
+        }
+        const mins = parseHmToMinutes(t);
+        if (mins === null) {
+          return res.status(400).json({
+            success: false,
+            message: "openAtTime must be HH:MM in 24-hour format",
+          });
+        }
+        openAtWeekday = wd;
+        openAtTimeMinutes = mins;
+      } else if (
+        (openAtWeekdayRaw !== undefined && openAtWeekdayRaw !== "") ||
+        (openAtTimeRaw !== undefined && openAtTimeRaw !== "")
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "openAtWeekday and openAtTime must be sent together",
+        });
+      }
+
       const rows = await BranchesService.list(
-        { restaurantId, areaId },
+        {
+          restaurantId,
+          areaId,
+          openAtWeekday,
+          openAtTimeMinutes,
+        },
         Number(req.query.limit || 50),
         Number(req.query.offset || 0),
       );
@@ -293,6 +414,42 @@ export const BranchesController = {
       const b = await BranchesService.update(req.params.id, dto);
       if (!b) return res.status(404).json({ message: "Not found" });
       return res.json(b);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async replaceOpeningHours(req: Request, res: Response, next: NextFunction) {
+    try {
+      let slots: OpeningHourInput[];
+      try {
+        const parsed = parseOpeningHoursBody(req.body.openingHours);
+        if (!parsed) {
+          return res.status(400).json({
+            success: false,
+            message: "openingHours array is required",
+          });
+        }
+        slots = parsed;
+      } catch {
+        return res.status(400).json({
+          success: false,
+          message: "openingHours must be an array of { dayOfWeek, openTime, closeTime, closesNextDay?, slotIndex? }",
+        });
+      }
+
+      try {
+        const b = await BranchesService.replaceOpeningHours(req.params.id, slots);
+        if (!b) return res.status(404).json({ message: "Not found" });
+        return res.json(b);
+      } catch (e: unknown) {
+        const friendly = openingHoursHttpMessage(e);
+        if (friendly) {
+          return res.status(400).json({ success: false, message: friendly });
+        }
+        const msg = e instanceof Error ? e.message : "Invalid opening hours";
+        return res.status(400).json({ success: false, message: msg });
+      }
     } catch (err) {
       next(err);
     }

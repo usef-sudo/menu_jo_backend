@@ -40,6 +40,22 @@ router.get("/nearby", BranchesController.listNearby);
 
 /**
  * @swagger
+ * /api/branches/{id}/opening-hours:
+ *   put:
+ *     summary: Replace weekly opening hours (admin)
+ *     tags: [Branches]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.put(
+  "/:id/opening-hours",
+  authMiddleware,
+  adminMiddleware,
+  BranchesController.replaceOpeningHours,
+);
+
+/**
+ * @swagger
  * /api/branches/{id}:
  *   get:
  *     summary: Get a branch by ID

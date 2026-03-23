@@ -1,6 +1,7 @@
 export * from "./users";
 export * from "./restaurants";
 export * from "./branches";
+export * from "./branchOpeningHours";
 export * from "./categories";
 export * from "./offers";
 export * from "./areas";
