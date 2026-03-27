@@ -5,9 +5,11 @@ import {
   branchOpeningHours,
   menuImages,
   facilities,
+  offers,
 } from "../../db/schema";
 import { eq, sql, and, asc, exists, inArray, type SQL } from "drizzle-orm";
 import {
+  computeOpenNow,
   normalizeOpeningHourInputs,
   validateOpeningSlot,
   type OpeningHourInput,
@@ -75,6 +77,32 @@ async function loadOpeningHoursMap(branchIds: string[]) {
     const list = map.get(r.branchId) ?? [];
     list.push(serializeOpeningHour(r));
     map.set(r.branchId, list);
+  }
+  return map;
+}
+
+async function loadActiveOfferCountByRestaurantId(restaurantIds: string[]) {
+  const map = new Map<string, number>();
+  if (restaurantIds.length === 0) return map;
+  const day = new Date().toISOString().slice(0, 10);
+  const rows = await db
+    .select({
+      restaurantId: offers.restaurantId,
+      count: sql<number>`COUNT(*)`,
+    })
+    .from(offers)
+    .where(
+      and(
+        inArray(offers.restaurantId, restaurantIds),
+        sql`${offers.startDate} <= ${day}`,
+        sql`${offers.endDate} >= ${day}`,
+      ),
+    )
+    .groupBy(offers.restaurantId);
+
+  for (const r of rows) {
+    if (!r.restaurantId) continue;
+    map.set(r.restaurantId, Number(r.count ?? 0));
   }
   return map;
 }
@@ -289,7 +317,29 @@ export const BranchesService = {
     const b = await this.findById(id);
     if (!b) return null;
     const hoursMap = await loadOpeningHoursMap([id]);
-    return { ...b, openingHours: hoursMap.get(id) ?? [] };
+    const openingHours = hoursMap.get(id) ?? [];
+    const offersMap = await loadActiveOfferCountByRestaurantId(
+      b.restaurantId ? [b.restaurantId] : [],
+    );
+    const activeOfferCount = b.restaurantId
+      ? (offersMap.get(b.restaurantId) ?? 0)
+      : 0;
+    return {
+      ...b,
+      openingHours,
+      activeOfferCount,
+      openNow: computeOpenNow({
+        isOpen: b.isOpen,
+        openingHours: openingHours.map((h) => ({
+          dayOfWeek: h.dayOfWeek,
+          openTime: h.openTime,
+          closeTime: h.closeTime,
+          closesNextDay: h.closesNextDay,
+        })),
+        openTime: b.openTime,
+        closeTime: b.closeTime,
+      }),
+    };
   },
 
   async list(filter: BranchListFilter = {}, limit = 50, offset = 0) {
@@ -357,9 +407,26 @@ export const BranchesService = {
 
     const rows = await query.limit(limit).offset(offset);
     const hoursMap = await loadOpeningHoursMap(rows.map((r) => r.id));
+    const offersMap = await loadActiveOfferCountByRestaurantId(
+      rows
+        .map((r) => r.restaurantId)
+        .filter((id): id is string => Boolean(id)),
+    );
     return rows.map((r) => ({
       ...r,
       openingHours: hoursMap.get(r.id) ?? [],
+      activeOfferCount: r.restaurantId ? (offersMap.get(r.restaurantId) ?? 0) : 0,
+      openNow: computeOpenNow({
+        isOpen: r.isOpen,
+        openingHours: (hoursMap.get(r.id) ?? []).map((h) => ({
+          dayOfWeek: h.dayOfWeek,
+          openTime: h.openTime,
+          closeTime: h.closeTime,
+          closesNextDay: h.closesNextDay,
+        })),
+        openTime: r.openTime,
+        closeTime: r.closeTime,
+      }),
     }));
   },
 
