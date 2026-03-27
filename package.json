@@ -7,12 +7,14 @@
     "dev": "nodemon src/server.ts",
     "prestart": "npm run build",
     "start": "node dist/server.js",
-    "build": "tsc",
+    "build": "tsc && npm run copy:migrations",
+    "copy:migrations": "mkdir -p dist/db/migrations && cp -R src/db/migrations/. dist/db/migrations/",
     "db:create": "node scripts/create-local-db.cjs",
     "db:migrate": "drizzle-kit migrate",
     "lint": "tsc --noEmit",
     "serve": "node dist/server.js",
-    "seed": "ts-node src/scripts/seed.ts"
+    "seed": "ts-node src/scripts/seed.ts",
+    "seed:prod": "node dist/scripts/seed.js"
   },
   "keywords": [],
   "author": "",
