@@ -106,7 +106,8 @@ install_base_packages() {
     python3 \
     openssl \
     gnupg \
-    lsb-release
+    lsb-release \
+    rsync
 }
 
 install_node() {
@@ -254,12 +255,67 @@ fetch_app() {
   fi
 }
 
+# /root is mode 700 — the service user cannot cd into repos cloned there.
+# Relocate to /opt/menu-api (or APP_DIR if already set outside /root).
+relocate_if_inaccessible() {
+  local target="${SAFE_APP_DIR:-/opt/menu-api}"
+  local needs_move=0
+
+  if [[ "${APP_DIR}" == /root || "${APP_DIR}" == /root/* ]]; then
+    needs_move=1
+    log "App is under /root (not traversable by ${SERVICE_USER}) — relocating to ${target}"
+  elif id -u "${SERVICE_USER}" >/dev/null 2>&1; then
+    if ! sudo -u "${SERVICE_USER}" test -r "${APP_DIR}/package.json" 2>/dev/null; then
+      needs_move=1
+      log "${SERVICE_USER} cannot read ${APP_DIR} — relocating to ${target}"
+    fi
+  fi
+
+  if [[ "${needs_move}" != "1" ]]; then
+    return
+  fi
+  if [[ "${APP_DIR}" == "${target}" ]]; then
+    die "Cannot run from ${APP_DIR}: ${SERVICE_USER} has no access. Move the repo outside /root (e.g. /opt/menu-api)."
+  fi
+
+  mkdir -p "${target}"
+  if [[ -d "${target}/.git" || -f "${target}/package.json" ]]; then
+    log "Syncing ${APP_DIR}/ → ${target}/"
+  else
+    log "Copying ${APP_DIR}/ → ${target}/"
+  fi
+  rsync -a --delete \
+    --exclude node_modules \
+    --exclude dist \
+    "${APP_DIR}/" "${target}/"
+  # Keep server-local secrets if already present at target; otherwise bring config.env along.
+  if [[ -f "${APP_DIR}/config.env" && ! -f "${target}/config.env" ]]; then
+    cp -a "${APP_DIR}/config.env" "${target}/config.env"
+  fi
+  APP_DIR="${target}"
+  log "APP_DIR is now ${APP_DIR}"
+}
+
 ensure_service_user() {
+  local home_dir="/var/lib/${SERVICE_USER}"
+  mkdir -p "${home_dir}"
+
   if ! id -u "${SERVICE_USER}" >/dev/null 2>&1; then
     log "Creating system user ${SERVICE_USER}"
-    useradd --system --home-dir "${APP_DIR}" --shell /usr/sbin/nologin "${SERVICE_USER}"
+    useradd --system --home-dir "${home_dir}" --create-home --shell /usr/sbin/nologin "${SERVICE_USER}"
+  else
+    # Avoid HOME pointing at /root/... (login shells then fail on .bash_profile).
+    usermod -d "${home_dir}" "${SERVICE_USER}" 2>/dev/null || true
   fi
+  chown -R "${SERVICE_USER}:${SERVICE_USER}" "${home_dir}"
   chown -R "${SERVICE_USER}:${SERVICE_USER}" "${APP_DIR}"
+}
+
+run_as_service_user() {
+  # Non-login shell; HOME is /var/lib/menuapi so npm cache works outside /root.
+  sudo -u "${SERVICE_USER}" -- \
+    env HOME="/var/lib/${SERVICE_USER}" \
+    bash -c "$*"
 }
 
 write_config_env() {
@@ -315,11 +371,9 @@ EOF
 
 build_app() {
   log "Installing npm dependencies and building"
-  cd "${APP_DIR}"
   mkdir -p "${APP_DIR}/uploads"
-  chown -R "${SERVICE_USER}:${SERVICE_USER}" "${APP_DIR}/uploads"
-  # Run as service user so node_modules ownership is correct.
-  sudo -u "${SERVICE_USER}" -H bash -lc "
+  chown -R "${SERVICE_USER}:${SERVICE_USER}" "${APP_DIR}"
+  run_as_service_user "
     set -euo pipefail
     cd '${APP_DIR}'
     if [[ -f package-lock.json ]]; then
@@ -379,7 +433,7 @@ maybe_seed() {
   [[ -f "${seed_script}" ]] || die "Missing ${seed_script}"
   log "SEED=1 — running run-seed-vps.sh (clears all app tables)"
   chmod +x "${seed_script}"
-  sudo -u "${SERVICE_USER}" -H env CONFIRM_SEED=1 bash "${seed_script}" --yes
+  run_as_service_user "CONFIRM_SEED=1 bash '${seed_script}' --yes"
 }
 
 main() {
@@ -390,6 +444,7 @@ main() {
   mkdir -p "${APP_DIR}"
   install_node
   fetch_app
+  relocate_if_inaccessible
   ensure_service_user
   install_postgres
   write_config_env
