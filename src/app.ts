@@ -23,6 +23,7 @@ import branchFacilitiesRoutes from "./modules/branchFacilities/branchFacilities.
 import menuImagesRoutes from "./modules/menuImages/menuImage.routes";
 import restaurantPhotosRoutes from "./modules/restaurantPhotos/restaurantPhotos.routes";
 import uploadRoutes from "./modules/uploader/uploader.routes";
+import mediaRoutes from "./modules/uploader/media.routes";
 import reviewsRoutes from "./modules/reviews/reviews.routes";
 import favoritesRoutes from "./modules/favorites/favorites.routes";
 import healthRoutes from "./modules/health/health.routes";
@@ -47,8 +48,16 @@ if (CORS_ORIGINS.length === 0 && NODE_ENV === "production") {
 // Global middlewares
 app.use(compression());
 app.use(cors(corsOptions));
-app.use(helmet());
+app.use(
+  helmet({
+    // Allow mobile / other origins to load images from this API host
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  }),
+);
 app.use(morgan(NODE_ENV === "production" ? "combined" : "dev"));
+
+// Serve uploaded files on a dedicated route (separate from POST /api/upload)
+app.use("/api/media", mediaRoutes);
 
 app.use(globalApiLimiter);
 

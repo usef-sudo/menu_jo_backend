@@ -1,0 +1,25 @@
+[Unit]
+Description=Menu API (nodejs-menu-api-v1)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=menuapi
+Group=menuapi
+WorkingDirectory=__APP_DIR__
+ExecStart=/usr/bin/node dist/server.js
+Restart=on-failure
+RestartSec=5
+# Soft limit; raise if the API needs more concurrent connections
+LimitNOFILE=65535
+
+# Do not inherit secrets from the systemd environment; the app loads config.env via dotenv.
+Environment=NODE_ENV=production
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

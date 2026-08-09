@@ -1,42 +1,29 @@
-// src/services/upload.service.ts
-import AWS from 'aws-sdk';
-import multer from 'multer';
-import multerS3 from 'multer-s3';
-import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
+import fs from "fs";
+import path from "path";
+import multer from "multer";
+import { v4 as uuidv4 } from "uuid";
 
-const awsRegion = process.env.AWS_REGION;
-const awsAccessKeyId = process.env.AWS_ACCESS_KEY_ID;
-const awsSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-const awsBucketName = process.env.AWS_S3_BUCKET_NAME;
+import { PUBLIC_BASE_URL, UPLOAD_DIR } from "../../config/env";
 
-if (!awsRegion || !awsBucketName) {
-  throw new Error("Missing AWS configuration environment variables (AWS_REGION, AWS_S3_BUCKET_NAME).");
-}
+/** Public path prefix for serving files (download). Upload POSTs stay on /api/upload. */
+export const MEDIA_URL_PREFIX = "/api/media";
 
-const bucketName: string = awsBucketName;
+const uploadRoot = path.isAbsolute(UPLOAD_DIR)
+  ? UPLOAD_DIR
+  : path.resolve(process.cwd(), UPLOAD_DIR);
 
-// Best practice: in AWS (ECS/EC2), rely on the runtime IAM Role (no static keys).
-// Still supports local dev with explicit keys.
-const credentials =
-  awsAccessKeyId && awsSecretAccessKey
-    ? {
-        accessKeyId: awsAccessKeyId,
-        secretAccessKey: awsSecretAccessKey,
-      }
-    : undefined;
-
-const s3 = new AWS.S3({
-  region: awsRegion,
-  ...(credentials ? { credentials } : {}),
-});
-
-
+fs.mkdirSync(uploadRoot, { recursive: true });
 
 export interface UploadOptions {
   folder?: string;
   allowedMimeTypes?: string[];
   maxFileSize?: number;
+}
+
+function publicUrlForRelativeKey(relativeKey: string): string {
+  const pathPart = `${MEDIA_URL_PREFIX}/${relativeKey.replace(/^\/+/, "")}`;
+  const base = PUBLIC_BASE_URL.replace(/\/+$/, "");
+  return base ? `${base}${pathPart}` : pathPart;
 }
 
 export class UploadService {
@@ -50,28 +37,39 @@ export class UploadService {
   getUploadMiddleware(options: UploadOptions = {}) {
     const {
       folder = "uploads",
-      allowedMimeTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"],
-      maxFileSize = 5 * 1024 * 1024
+      allowedMimeTypes = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/webp",
+        "image/gif",
+      ],
+      maxFileSize = 5 * 1024 * 1024,
     } = options;
 
+    const storage = multer.diskStorage({
+      destination: (_req, _file, cb) => {
+        const dest = path.join(uploadRoot, folder);
+        fs.mkdirSync(dest, { recursive: true });
+        cb(null, dest);
+      },
+      filename: (_req, file, cb) => {
+        cb(null, `${uuidv4()}${path.extname(file.originalname)}`);
+      },
+    });
 
     return multer({
-      storage: multerS3({
-        // multer-s3 runtime expects aws-sdk v2 S3; typings vary between versions.
-        s3: s3 as any,
-        bucket: bucketName,
-        //  acl: "public-read",
-        contentType: multerS3.AUTO_CONTENT_TYPE,
-        key: (_req, file, cb) => {
-          const uniqueName = `${folder}/${uuidv4()}${path.extname(file.originalname)}`;
-          cb(null, uniqueName);
-        }
-      }),
+      storage,
       limits: { fileSize: maxFileSize },
       fileFilter: (_req, file, cb) => {
         if (allowedMimeTypes.includes(file.mimetype)) cb(null, true);
-        else cb(new Error(`Invalid file type. Allowed types: ${allowedMimeTypes.join(", ")}`));
-      }
+        else
+          cb(
+            new Error(
+              `Invalid file type. Allowed types: ${allowedMimeTypes.join(", ")}`,
+            ),
+          );
+      },
     });
   }
 
@@ -83,31 +81,55 @@ export class UploadService {
     return this.getUploadMiddleware(options).array(fieldName, maxCount);
   }
 
-  async deleteFile(fileUrl: string) {
-    try {
-      const url = new URL(fileUrl);
-      const key = url.pathname.substring(1);
-
-      await s3
-        .deleteObject({
-          Bucket: bucketName,
-          Key: key,
-        })
-        .promise();
-
-      return true;
-    } catch (error) {
-      console.error("Error deleting file from S3:", error);
-      return false;
-    }
+  /** Relative key under upload root (e.g. uploads/uuid.jpg). */
+  getRelativeKey(file: Express.Multer.File): string {
+    const rel = path.relative(uploadRoot, file.path);
+    return rel.split(path.sep).join("/");
   }
 
-  getPublicUrl(file: any) {
-    return file.location;
+  getPublicUrl(file: Express.Multer.File): string {
+    return publicUrlForRelativeKey(this.getRelativeKey(file));
+  }
+
+  async deleteFile(fileUrl: string) {
+    try {
+      let pathname: string;
+      try {
+        pathname = new URL(fileUrl).pathname;
+      } catch {
+        pathname = fileUrl;
+      }
+
+      // Prefer /api/media/...; also accept legacy /uploads/... paths.
+      let relativeKey: string | null = null;
+      for (const marker of [`${MEDIA_URL_PREFIX}/`, "/uploads/"]) {
+        const idx = pathname.indexOf(marker);
+        if (idx !== -1) {
+          relativeKey = pathname.slice(idx + marker.length);
+          break;
+        }
+      }
+      if (!relativeKey || relativeKey.includes("..")) return false;
+
+      const fullPath = path.join(uploadRoot, relativeKey);
+      const resolved = path.resolve(fullPath);
+      if (
+        !resolved.startsWith(path.resolve(uploadRoot) + path.sep) &&
+        resolved !== path.resolve(uploadRoot)
+      ) {
+        return false;
+      }
+
+      if (fs.existsSync(resolved)) {
+        await fs.promises.unlink(resolved);
+      }
+      return true;
+    } catch (error) {
+      console.error("Error deleting local upload:", error);
+      return false;
+    }
   }
 }
 
 export const uploadService = UploadService.getInstance();
-
-
-
+export { uploadRoot };

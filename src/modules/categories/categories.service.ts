@@ -49,9 +49,9 @@ export const CategoriesService = {
 
   async createWithImageUpload(
     dto: Omit<CreateCategoryDTO, 'imageUrl'>,
-    imageFile: Express.MulterS3.File
+    imageFile: Express.Multer.File
   ) {
-    // Upload image to S3
+    // Store uploaded image URL
     const imageUrl = uploadService.getPublicUrl(imageFile);
     
     const [row] = await db.insert(categories)
@@ -149,7 +149,7 @@ export const CategoriesService = {
     return row;
   },
 
-  async updateWithImageUpload(id: string, updates: UpdateCategoryDTO, imageFile?: Express.MulterS3.File) {
+  async updateWithImageUpload(id: string, updates: UpdateCategoryDTO, imageFile?: Express.Multer.File) {
     const updateData: any = { ...updates };
     
     if (imageFile) {
@@ -177,7 +177,7 @@ export const CategoriesService = {
   },
 
   async delete(id: string) {
-    // Delete image from S3 if exists
+    // Delete local image file if exists
     const category = await this.findById(id);
     if (category?.imageUrl) {
       await uploadService.deleteFile(category.imageUrl);

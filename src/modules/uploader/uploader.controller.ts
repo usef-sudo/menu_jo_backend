@@ -29,7 +29,7 @@ export const UploadController = {
         success: true,
         message: "File uploaded successfully",
         data: {
-          url: uploadService.getPublicUrl(req.file as Express.MulterS3.File),
+          url: uploadService.getPublicUrl(req.file),
           filename: req.file.originalname,
           mimetype: req.file.mimetype,
           size: req.file.size
@@ -42,7 +42,7 @@ export const UploadController = {
 
   async uploadMultiple(req: Request, res: Response, next: NextFunction) {
     try {
-      const files = req.files as Express.MulterS3.File[];
+      const files = req.files as Express.Multer.File[];
       if (!files || files.length === 0) {
         return res.status(400).json({ success: false, message: "No files uploaded" });
       }

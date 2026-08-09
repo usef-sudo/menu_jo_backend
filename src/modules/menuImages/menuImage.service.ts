@@ -100,7 +100,7 @@ export const MenuImagesService = {
   },
 
   // New method: Upload and create in one go
-  async uploadAndCreate(branchId: string, file: Express.MulterS3.File) {
+  async uploadAndCreate(branchId: string, file: Express.Multer.File) {
     const imageUrl = uploadService.getPublicUrl(file);
 
     const [image] = await db.insert(menuImages)
@@ -116,7 +116,7 @@ export const MenuImagesService = {
   },
 
   // New method: Upload multiple and create
-  async uploadMultipleAndCreate(branchId: string, files: Express.MulterS3.File[]) {
+  async uploadMultipleAndCreate(branchId: string, files: Express.Multer.File[]) {
     const nextOrder = await this.getNextDisplayOrder(branchId);
 
     const images = files.map((file, index) => ({
@@ -142,12 +142,12 @@ export const MenuImagesService = {
   },
 
 
-  async deleteImageWithS3(id: string) {
+  async deleteImageWithFile(id: string) {
     // Get the image first to get the URL
     const image = await this.findById(id);
     if (!image) return false;
 
-    // Delete from S3
+    // Delete local upload file
     await uploadService.deleteFile(image.imageUrl);
 
     // Delete from database

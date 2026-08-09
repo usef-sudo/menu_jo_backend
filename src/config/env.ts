@@ -32,6 +32,15 @@ export const DB_PORT = getEnv("DB_PORT");
 export const DB_NAME = getEnv("DB_NAME");
 export const DATABASE_URL = getEnv("DATABASE_URL");
 export const JWT_SECRET = getEnv("JWT_SECRET");
-export const AWS_S3_BUCKET_NAME = getEnv("AWS_S3_BUCKET_NAME");
 
+/** Local upload directory (relative to cwd or absolute). */
+export const UPLOAD_DIR = process.env.UPLOAD_DIR || "uploads";
 
+/**
+ * Public origin for uploaded file URLs (e.g. https://api.example.com).
+ * Empty = path-only URLs like /uploads/...
+ */
+export const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL ?? "").replace(
+  /\/+$/,
+  "",
+);

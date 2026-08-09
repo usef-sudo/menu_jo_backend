@@ -63,7 +63,7 @@ async createWithImage(req: Request, res: Response, next: NextFunction) {
 
       if (!nameEn || !nameAr) {
         if (req.file) {
-          await uploadService.deleteFile((req.file as any).location);
+          await uploadService.deleteFile(uploadService.getPublicUrl(req.file));
         }
         return res.status(400).json({
           success: false,
@@ -73,7 +73,7 @@ async createWithImage(req: Request, res: Response, next: NextFunction) {
 
       if (nameEn.length > 255 || nameAr.length > 255) {
         if (req.file) {
-          await uploadService.deleteFile((req.file as any).location);
+          await uploadService.deleteFile(uploadService.getPublicUrl(req.file));
         }
         return res.status(400).json({
           success: false,
@@ -109,7 +109,7 @@ async createWithImage(req: Request, res: Response, next: NextFunction) {
             displayOrder: parsedDisplayOrder,
             isActive: parsedIsActive,
           },
-          req.file as any
+          req.file
         );
 
         return res.status(201).json({
@@ -118,7 +118,7 @@ async createWithImage(req: Request, res: Response, next: NextFunction) {
           data: category,
         });
       } catch (dbError) {
-        await uploadService.deleteFile((req.file as any).location);
+        await uploadService.deleteFile(uploadService.getPublicUrl(req.file));
         next(dbError);
       }
     });

@@ -2,16 +2,7 @@
 import express from 'express';
 import { UploadController } from '../uploader/uploader.controller';
 import { authMiddleware } from '../../middlewares/auth.middleware';
-import multer from 'multer';
 import { uploadService } from "../uploader/uploader.service";
-import e from 'express';
-
-export const upload = multer({
-  storage: multer.memoryStorage(), // required for S3 upload
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB
-  },
-});
 
 const router = express.Router();
 
