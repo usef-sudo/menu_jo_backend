@@ -11,6 +11,33 @@ export const AreasService = {
     }).returning();
     return r;
   },
+
+  async createBulk(items: { nameEn: string; nameAr: string }[]) {
+    const results: Array<{
+      index: number;
+      ok: boolean;
+      item?: Awaited<ReturnType<typeof AreasService.create>>;
+      message?: string;
+    }> = [];
+    for (let i = 0; i < items.length; i++) {
+      try {
+        const item = await this.create(items[i]);
+        results.push({ index: i, ok: true, item });
+      } catch (err) {
+        results.push({
+          index: i,
+          ok: false,
+          message: err instanceof Error ? err.message : "Failed to create area",
+        });
+      }
+    }
+    return {
+      created: results.filter((r) => r.ok).length,
+      failed: results.filter((r) => !r.ok).length,
+      results,
+    };
+  },
+
   async list() { return await db.select().from(areas).orderBy(asc(areas.name_en)); },
 
   async findById(id: string) {
@@ -33,4 +60,3 @@ export const AreasService = {
     return true;
   },
 };
-

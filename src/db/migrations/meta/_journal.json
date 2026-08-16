@@ -64,6 +64,13 @@
       "when": 1774296290411,
       "tag": "0008_branch_opening_hours",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1776300000000,
+      "tag": "0009_restaurant_social_links",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { BranchesService, parseHmToMinutes } from "./branches.service";
+import { BranchesService, parseHmToMinutes, type CreateBranchDTO } from "./branches.service";
 import { isUuid, trimToNull } from "../shared/httpValidation";
 import type { OpeningHourInput } from "./branchOpeningHours.util";
 
@@ -207,6 +207,90 @@ export const BranchesController = {
         }
         throw e;
       }
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async createBulk(req: Request, res: Response, next: NextFunction) {
+    try {
+      const rawItems = req.body?.items ?? req.body;
+      if (!Array.isArray(rawItems) || rawItems.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "items must be a non-empty array",
+        });
+      }
+      if (rawItems.length > 50) {
+        return res.status(400).json({
+          success: false,
+          message: "At most 50 items per request",
+        });
+      }
+
+      const items: CreateBranchDTO[] = [];
+      for (let i = 0; i < rawItems.length; i++) {
+        const raw = rawItems[i];
+        if (!raw || typeof raw !== "object") {
+          return res.status(400).json({
+            success: false,
+            message: `Item ${i}: invalid object`,
+          });
+        }
+        const body = raw as Record<string, unknown>;
+        const restaurantId = String(body.restaurantId ?? "").trim();
+        if (!restaurantId || !isUuid(restaurantId)) {
+          return res.status(400).json({
+            success: false,
+            message: `Item ${i}: valid restaurantId is required`,
+          });
+        }
+        const nameEn = String(body.nameEn ?? "").trim();
+        const nameAr = String(body.nameAr ?? "").trim();
+        if (!nameEn || !nameAr) {
+          return res.status(400).json({
+            success: false,
+            message: `Item ${i}: both English and Arabic names are required`,
+          });
+        }
+        let areaId: string | null | undefined;
+        if (body.areaId !== undefined && body.areaId !== null && body.areaId !== "") {
+          const aid = String(body.areaId).trim();
+          if (!isUuid(aid)) {
+            return res.status(400).json({
+              success: false,
+              message: `Item ${i}: areaId must be a valid UUID`,
+            });
+          }
+          areaId = aid;
+        } else if (body.areaId === null || body.areaId === "") {
+          areaId = null;
+        }
+        let costLevel: number | undefined;
+        if (body.costLevel !== undefined && body.costLevel !== null && body.costLevel !== "") {
+          const n = Number(body.costLevel);
+          if (!Number.isInteger(n) || n < 1 || n > 5) {
+            return res.status(400).json({
+              success: false,
+              message: `Item ${i}: costLevel must be an integer from 1 to 5`,
+            });
+          }
+          costLevel = n;
+        }
+        items.push({
+          restaurantId,
+          nameEn,
+          nameAr,
+          areaId,
+          address: trimToNull(body.address) ?? undefined,
+          latitude: trimToNull(body.latitude) ?? undefined,
+          longitude: trimToNull(body.longitude) ?? undefined,
+          costLevel,
+        });
+      }
+
+      const result = await BranchesService.createBulk(items);
+      return res.status(201).json(result);
     } catch (err) {
       next(err);
     }

@@ -10,6 +10,11 @@ router.post(
   authMiddleware,
   ReviewsController.upsert,
 );
+router.delete(
+  "/branches/:branchId/reviews",
+  authMiddleware,
+  ReviewsController.remove,
+);
 
 export default router;
 

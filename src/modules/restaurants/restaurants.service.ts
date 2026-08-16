@@ -17,6 +17,11 @@ export interface CreateRestaurantDTO {
   descriptionAr?: string | null;
   logoUrl?: string | null;
   phone?: string | null;
+  websiteUrl?: string | null;
+  instagramUrl?: string | null;
+  facebookUrl?: string | null;
+  talabatUrl?: string | null;
+  careemUrl?: string | null;
   categoryIds?: string[]; // many-to-many
 }
 
@@ -27,6 +32,11 @@ export interface UpdateRestaurantDTO {
   descriptionAr?: string | null;
   logoUrl?: string | null;
   phone?: string | null;
+  websiteUrl?: string | null;
+  instagramUrl?: string | null;
+  facebookUrl?: string | null;
+  talabatUrl?: string | null;
+  careemUrl?: string | null;
   /** When set, replaces all restaurant–category links. */
   categoryIds?: string[];
 }
@@ -39,7 +49,12 @@ export const RestaurantsService = {
       description_en: dto.descriptionEn ?? null,
       description_ar: dto.descriptionAr ?? null,
       logoUrl: dto.logoUrl ?? null,
-      phone: dto.phone ?? null
+      phone: dto.phone ?? null,
+      websiteUrl: dto.websiteUrl ?? null,
+      instagramUrl: dto.instagramUrl ?? null,
+      facebookUrl: dto.facebookUrl ?? null,
+      talabatUrl: dto.talabatUrl ?? null,
+      careemUrl: dto.careemUrl ?? null,
     }).returning();
 
     if (dto.categoryIds && dto.categoryIds.length) {
@@ -53,6 +68,33 @@ export const RestaurantsService = {
     return row;
   },
 
+  async createBulk(items: CreateRestaurantDTO[]) {
+    const results: Array<{
+      index: number;
+      ok: boolean;
+      item?: Awaited<ReturnType<typeof RestaurantsService.create>>;
+      message?: string;
+    }> = [];
+    for (let i = 0; i < items.length; i++) {
+      try {
+        const item = await this.create(items[i]);
+        results.push({ index: i, ok: true, item });
+      } catch (err) {
+        results.push({
+          index: i,
+          ok: false,
+          message:
+            err instanceof Error ? err.message : "Failed to create restaurant",
+        });
+      }
+    }
+    return {
+      created: results.filter((r) => r.ok).length,
+      failed: results.filter((r) => !r.ok).length,
+      results,
+    };
+  },
+
   async update(id: string, dto: UpdateRestaurantDTO) {
     const existing = await this.findById(id);
     if (!existing) return null;
@@ -64,6 +106,11 @@ export const RestaurantsService = {
     if (dto.descriptionAr !== undefined) patch.description_ar = dto.descriptionAr;
     if (dto.logoUrl !== undefined) patch.logoUrl = dto.logoUrl;
     if (dto.phone !== undefined) patch.phone = dto.phone;
+    if (dto.websiteUrl !== undefined) patch.websiteUrl = dto.websiteUrl;
+    if (dto.instagramUrl !== undefined) patch.instagramUrl = dto.instagramUrl;
+    if (dto.facebookUrl !== undefined) patch.facebookUrl = dto.facebookUrl;
+    if (dto.talabatUrl !== undefined) patch.talabatUrl = dto.talabatUrl;
+    if (dto.careemUrl !== undefined) patch.careemUrl = dto.careemUrl;
 
     if (Object.keys(patch).length > 0) {
       await db.update(restaurants).set(patch).where(eq(restaurants.id, id));
@@ -246,6 +293,11 @@ export const RestaurantsService = {
       descriptionAr: restaurant.description_ar,
       logoUrl: restaurant.logoUrl,
       phone: restaurant.phone,
+      websiteUrl: restaurant.websiteUrl,
+      instagramUrl: restaurant.instagramUrl,
+      facebookUrl: restaurant.facebookUrl,
+      talabatUrl: restaurant.talabatUrl,
+      careemUrl: restaurant.careemUrl,
       createdAt: restaurant.createdAt,
       category: categoryRow ?? null,
       categories: categoryRows,

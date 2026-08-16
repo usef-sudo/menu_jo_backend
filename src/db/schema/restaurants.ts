@@ -8,5 +8,10 @@ export const restaurants = pgTable("restaurants", {
   description_en: text("description_en"),
   description_ar: text("description_ar"),
   phone: varchar("phone", { length: 20 }),
+  websiteUrl: text("website_url"),
+  instagramUrl: text("instagram_url"),
+  facebookUrl: text("facebook_url"),
+  talabatUrl: text("talabat_url"),
+  careemUrl: text("careem_url"),
   createdAt: timestamp("created_at").defaultNow(),
 });

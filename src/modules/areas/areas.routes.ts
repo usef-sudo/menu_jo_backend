@@ -11,6 +11,13 @@ router.post(
   AreasController.create,
 );
 
+router.post(
+  "/bulk",
+  authMiddleware,
+  adminMiddleware,
+  AreasController.createBulk,
+);
+
 router.get("/", AreasController.list);
 
 router.get("/:id", AreasController.getOne);

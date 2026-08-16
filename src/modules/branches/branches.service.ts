@@ -235,6 +235,33 @@ export const BranchesService = {
     return await this.findByIdWithOpeningHours(b.id);
   },
 
+  async createBulk(items: CreateBranchDTO[]) {
+    const results: Array<{
+      index: number;
+      ok: boolean;
+      item?: Awaited<ReturnType<typeof BranchesService.create>>;
+      message?: string;
+    }> = [];
+    for (let i = 0; i < items.length; i++) {
+      try {
+        const item = await this.create(items[i]);
+        results.push({ index: i, ok: true, item });
+      } catch (err) {
+        results.push({
+          index: i,
+          ok: false,
+          message:
+            err instanceof Error ? err.message : "Failed to create branch",
+        });
+      }
+    }
+    return {
+      created: results.filter((r) => r.ok).length,
+      failed: results.filter((r) => !r.ok).length,
+      results,
+    };
+  },
+
   async update(id: string, dto: UpdateBranchDTO) {
     const existing = await this.findById(id);
     if (!existing) return null;

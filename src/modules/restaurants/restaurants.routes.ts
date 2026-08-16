@@ -45,6 +45,13 @@ router.post(
   RestaurantsController.create,
 );
 
+router.post(
+  "/bulk",
+  authMiddleware,
+  adminMiddleware,
+  RestaurantsController.createBulk,
+);
+
 /**
  * @swagger
  * /api/restaurants:

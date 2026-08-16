@@ -102,13 +102,14 @@ systemctl status menu-api
 journalctl -u menu-api -f
 ```
 
-Re-deploy:
+Re-deploy (after backend code changes):
 
 ```bash
-cd /opt/menu-api   # or your APP_DIR
-git pull
-npm ci && npm run build
+cd /opt/menu_jo_backend   # your APP_DIR on the VPS
+sudo git pull
+sudo -u menuapi -- env HOME=/var/lib/menuapi bash -c 'cd /opt/menu_jo_backend && npm ci && npm run build'
 sudo systemctl restart menu-api
+curl -sS http://127.0.0.1:8000/api/health/ready
 ```
 
 Do not commit `config.env`. Open firewall port **8000** (or put a reverse proxy in front) for external clients.

@@ -71,5 +71,16 @@ export class ReviewsService {
       .returning();
     return row;
   }
+
+  static async removeForUser(userId: string, branchId: string) {
+    const existing = await db
+      .select()
+      .from(reviews)
+      .where(and(eq(reviews.userId, userId), eq(reviews.branchId, branchId)))
+      .then((rows) => rows[0]);
+    if (!existing) return false;
+    await db.delete(reviews).where(eq(reviews.id, existing.id));
+    return true;
+  }
 }
 

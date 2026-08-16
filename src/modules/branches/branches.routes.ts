@@ -20,6 +20,13 @@ router.post(
   BranchesController.create,
 );
 
+router.post(
+  "/bulk",
+  authMiddleware,
+  adminMiddleware,
+  BranchesController.createBulk,
+);
+
 /**
  * @swagger
  * /api/branches:

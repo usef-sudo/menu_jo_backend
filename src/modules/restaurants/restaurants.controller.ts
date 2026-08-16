@@ -5,6 +5,21 @@ import { isUuid, trimToNull } from "../shared/httpValidation";
 const MAX_NAME = 255;
 const MAX_PHONE = 20;
 const MAX_LOGO_URL = 2048;
+const MAX_LINK_URL = 2048;
+
+function parseOptionalLink(
+  body: Record<string, unknown>,
+  key: string,
+): { ok: true; value?: string | null } | { ok: false; message: string } {
+  if (!Object.prototype.hasOwnProperty.call(body, key)) {
+    return { ok: true };
+  }
+  const raw = trimToNull(body[key]);
+  if (raw && raw.length > MAX_LINK_URL) {
+    return { ok: false, message: `${key} is too long` };
+  }
+  return { ok: true, value: raw };
+}
 
 function parseCategoryIds(raw: unknown): string[] | undefined {
   if (!Array.isArray(raw)) return undefined;
@@ -62,6 +77,22 @@ export const RestaurantsController = {
         });
       }
 
+      const linkKeys = [
+        "websiteUrl",
+        "instagramUrl",
+        "facebookUrl",
+        "talabatUrl",
+        "careemUrl",
+      ] as const;
+      const links: Record<string, string | null | undefined> = {};
+      for (const key of linkKeys) {
+        const parsed = parseOptionalLink(req.body as Record<string, unknown>, key);
+        if (!parsed.ok) {
+          return res.status(400).json({ success: false, message: parsed.message });
+        }
+        if (parsed.value !== undefined) links[key] = parsed.value;
+      }
+
       const r = await RestaurantsService.create({
         nameEn,
         nameAr,
@@ -69,9 +100,78 @@ export const RestaurantsController = {
         descriptionAr,
         logoUrl: logoRaw,
         phone: phoneRaw,
+        websiteUrl: links.websiteUrl ?? null,
+        instagramUrl: links.instagramUrl ?? null,
+        facebookUrl: links.facebookUrl ?? null,
+        talabatUrl: links.talabatUrl ?? null,
+        careemUrl: links.careemUrl ?? null,
         categoryIds,
       });
       return res.status(201).json(r);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async createBulk(req: Request, res: Response, next: NextFunction) {
+    try {
+      const rawItems = req.body?.items ?? req.body;
+      if (!Array.isArray(rawItems) || rawItems.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "items must be a non-empty array",
+        });
+      }
+      if (rawItems.length > 50) {
+        return res.status(400).json({
+          success: false,
+          message: "At most 50 items per request",
+        });
+      }
+
+      const items: Parameters<typeof RestaurantsService.create>[0][] = [];
+      for (let i = 0; i < rawItems.length; i++) {
+        const raw = rawItems[i];
+        if (!raw || typeof raw !== "object") {
+          return res.status(400).json({
+            success: false,
+            message: `Item ${i}: invalid object`,
+          });
+        }
+        const body = raw as Record<string, unknown>;
+        const nameEn = String(body.nameEn ?? "").trim();
+        const nameAr = String(body.nameAr ?? "").trim();
+        if (!nameEn || !nameAr) {
+          return res.status(400).json({
+            success: false,
+            message: `Item ${i}: both English and Arabic names are required`,
+          });
+        }
+        if (nameEn.length > MAX_NAME || nameAr.length > MAX_NAME) {
+          return res.status(400).json({
+            success: false,
+            message: `Item ${i}: names must be at most 255 characters`,
+          });
+        }
+        const phoneRaw = trimToNull(body.phone);
+        if (phoneRaw && phoneRaw.length > MAX_PHONE) {
+          return res.status(400).json({
+            success: false,
+            message: `Item ${i}: phone must be at most 20 characters`,
+          });
+        }
+        items.push({
+          nameEn,
+          nameAr,
+          descriptionEn: trimToNull(body.descriptionEn),
+          descriptionAr: trimToNull(body.descriptionAr),
+          phone: phoneRaw,
+          logoUrl: trimToNull(body.logoUrl),
+        });
+      }
+
+      const result = await RestaurantsService.createBulk(items);
+      return res.status(201).json(result);
     } catch (err) {
       next(err);
     }
@@ -197,6 +297,21 @@ export const RestaurantsController = {
           });
         }
         dto.phone = phoneRaw;
+      }
+      for (const key of [
+        "websiteUrl",
+        "instagramUrl",
+        "facebookUrl",
+        "talabatUrl",
+        "careemUrl",
+      ] as const) {
+        const parsed = parseOptionalLink(body, key);
+        if (!parsed.ok) {
+          return res.status(400).json({ success: false, message: parsed.message });
+        }
+        if (parsed.value !== undefined) {
+          dto[key] = parsed.value;
+        }
       }
       if (Object.prototype.hasOwnProperty.call(body, "categoryIds")) {
         try {

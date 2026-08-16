@@ -51,5 +51,29 @@ export const ReviewsController = {
       next(err);
     }
   },
+
+  async remove(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ success: false, message: "Unauthorized" });
+      }
+      const { branchId } = req.params;
+      if (!branchId) {
+        return res
+          .status(400)
+          .json({ success: false, message: "branchId is required" });
+      }
+      const ok = await ReviewsService.removeForUser(userId, branchId);
+      if (!ok) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Review not found" });
+      }
+      return res.json({ success: true });
+    } catch (err) {
+      next(err);
+    }
+  },
 };
 
