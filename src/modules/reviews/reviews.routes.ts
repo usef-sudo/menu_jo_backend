@@ -5,6 +5,10 @@ import { authMiddleware } from "../../middlewares/auth.middleware";
 const router = Router({ mergeParams: true });
 
 router.get("/branches/:branchId/reviews", ReviewsController.list);
+router.get(
+  "/restaurants/:restaurantId/reviews",
+  ReviewsController.listForRestaurant,
+);
 router.post(
   "/branches/:branchId/reviews",
   authMiddleware,

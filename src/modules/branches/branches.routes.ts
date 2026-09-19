@@ -20,6 +20,20 @@ router.post(
   BranchesController.create,
 );
 
+router.get(
+  "/bulk/template",
+  authMiddleware,
+  adminMiddleware,
+  BranchesController.downloadTemplate,
+);
+
+router.post(
+  "/bulk/upload",
+  authMiddleware,
+  adminMiddleware,
+  BranchesController.uploadExcel,
+);
+
 router.post(
   "/bulk",
   authMiddleware,

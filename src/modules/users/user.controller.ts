@@ -179,4 +179,47 @@ export const UsersController = {
       next(err);
     }
   },
+
+  async me(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ success: false, message: "Unauthorized" });
+      }
+      const user = await UsersService.findById(userId);
+      if (!user) {
+        return res.status(404).json({ success: false, message: "User not found" });
+      }
+      return res.json(UsersService.toSafeUser(user));
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async updateMe(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ success: false, message: "Unauthorized" });
+      }
+      const { name, birthDate, gender, phoneNumber } = req.body as {
+        name?: string;
+        birthDate?: string;
+        gender?: string;
+        phoneNumber?: string;
+      };
+      const user = await UsersService.updateMe(userId, {
+        name,
+        birthDate,
+        gender,
+        phoneNumber,
+      });
+      if (!user) {
+        return res.status(404).json({ success: false, message: "User not found" });
+      }
+      return res.json(UsersService.toSafeUser(user));
+    } catch (err) {
+      next(err);
+    }
+  },
 };

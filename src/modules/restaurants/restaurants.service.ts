@@ -8,7 +8,7 @@ import {
   facilities,
   reviews,
 } from "../../db/schema";
-import { eq, and, sql, ilike, or, gte, lte, desc, inArray } from "drizzle-orm";
+import { eq, and, sql, ilike, or, gte, lte, desc, inArray, avg, count } from "drizzle-orm";
 
 export interface CreateRestaurantDTO {
   nameEn: string;
@@ -305,26 +305,21 @@ export const RestaurantsService = {
       facilities: facilityRows,
       branchesCount: branchRows.length,
       totalVotes,
-      // rating aggregates across all reviews on branches of this restaurant
+      // Same aggregate as the reviews list: all reviews on this restaurant's branches.
       ...(await (async () => {
-        const ratingRows = await db
+        const [ratingSummary] = await db
           .select({
-            rating: sql<number>`reviews.rating`,
+            avgRating: avg(reviews.rating),
+            reviewsCount: count(reviews.id),
           })
           .from(reviews)
           .innerJoin(branches, eq(reviews.branchId, branches.id))
           .where(eq(branches.restaurantId, id));
 
-        if (!ratingRows.length) {
-          return { avgRating: 0, reviewsCount: 0 };
-        }
-
-        const sum = ratingRows.reduce(
-          (acc, row) => acc + (row.rating ?? 0),
-          0,
-        );
-        const count = ratingRows.length;
-        return { avgRating: sum / count, reviewsCount: count };
+        return {
+          avgRating: Number(ratingSummary?.avgRating ?? 0),
+          reviewsCount: Number(ratingSummary?.reviewsCount ?? 0),
+        };
       })()),
     };
   },

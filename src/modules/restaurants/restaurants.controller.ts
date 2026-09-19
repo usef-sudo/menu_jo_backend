@@ -1,11 +1,32 @@
 import { Request, Response, NextFunction } from "express";
 import { RestaurantsService } from "./restaurants.service";
 import { isUuid, trimToNull } from "../shared/httpValidation";
+import {
+  MAX_BULK_ROWS,
+  buildBulkTemplate,
+  parseBulkExcel,
+  runBulkExcelUpload,
+  sendExcel,
+  type BulkColumn,
+} from "../shared/bulkExcel";
 
 const MAX_NAME = 255;
 const MAX_PHONE = 20;
 const MAX_LOGO_URL = 2048;
 const MAX_LINK_URL = 2048;
+
+const RESTAURANT_COLUMNS: BulkColumn[] = [
+  { key: "nameEn", required: true, note: "English restaurant name", width: 28 },
+  { key: "nameAr", required: true, note: "Arabic restaurant name", width: 28 },
+  { key: "descriptionEn", note: "English description", width: 36 },
+  { key: "descriptionAr", note: "Arabic description", width: 36 },
+  { key: "phone", note: "Phone number (max 20 characters)", width: 18 },
+  { key: "websiteUrl", note: "Website URL", width: 32 },
+  { key: "instagramUrl", note: "Instagram URL", width: 32 },
+  { key: "facebookUrl", note: "Facebook URL", width: 32 },
+  { key: "talabatUrl", note: "Talabat URL", width: 32 },
+  { key: "careemUrl", note: "Careem URL", width: 32 },
+];
 
 function parseOptionalLink(
   body: Record<string, unknown>,
@@ -122,10 +143,10 @@ export const RestaurantsController = {
           message: "items must be a non-empty array",
         });
       }
-      if (rawItems.length > 50) {
+      if (rawItems.length > MAX_BULK_ROWS) {
         return res.status(400).json({
           success: false,
-          message: "At most 50 items per request",
+          message: `At most ${MAX_BULK_ROWS} items per request`,
         });
       }
 
@@ -167,12 +188,67 @@ export const RestaurantsController = {
           descriptionAr: trimToNull(body.descriptionAr),
           phone: phoneRaw,
           logoUrl: trimToNull(body.logoUrl),
+          websiteUrl: trimToNull(body.websiteUrl),
+          instagramUrl: trimToNull(body.instagramUrl),
+          facebookUrl: trimToNull(body.facebookUrl),
+          talabatUrl: trimToNull(body.talabatUrl),
+          careemUrl: trimToNull(body.careemUrl),
         });
       }
 
       const result = await RestaurantsService.createBulk(items);
       return res.status(201).json(result);
     } catch (err) {
+      next(err);
+    }
+  },
+
+  async downloadTemplate(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const buffer = await buildBulkTemplate({
+        sheetName: "restaurants",
+        columns: RESTAURANT_COLUMNS,
+      });
+      sendExcel(res, "restaurants_template.xlsx", buffer);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async uploadExcel(req: Request, res: Response, next: NextFunction) {
+    try {
+      const file = await runBulkExcelUpload(req, res);
+      const rows = await parseBulkExcel(file.buffer, "restaurants");
+      const items: Parameters<typeof RestaurantsService.create>[0][] = [];
+      for (let i = 0; i < rows.length; i++) {
+        const body = rows[i];
+        const nameEn = String(body.nameEn ?? "").trim();
+        const nameAr = String(body.nameAr ?? "").trim();
+        if (!nameEn || !nameAr) {
+          return res.status(400).json({
+            success: false,
+            message: `Item ${i}: both English and Arabic names are required`,
+          });
+        }
+        items.push({
+          nameEn,
+          nameAr,
+          descriptionEn: trimToNull(body.descriptionEn),
+          descriptionAr: trimToNull(body.descriptionAr),
+          phone: trimToNull(body.phone),
+          websiteUrl: trimToNull(body.websiteUrl),
+          instagramUrl: trimToNull(body.instagramUrl),
+          facebookUrl: trimToNull(body.facebookUrl),
+          talabatUrl: trimToNull(body.talabatUrl),
+          careemUrl: trimToNull(body.careemUrl),
+        });
+      }
+      const result = await RestaurantsService.createBulk(items);
+      return res.status(201).json(result);
+    } catch (err) {
+      if (err instanceof Error && err.message) {
+        return res.status(400).json({ success: false, message: err.message });
+      }
       next(err);
     }
   },

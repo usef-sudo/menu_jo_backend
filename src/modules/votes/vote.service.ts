@@ -122,5 +122,28 @@ export const VotesService = {
     });
     
     return true;
-  }
+  },
+
+  async summary(branchId: string, userId?: string) {
+    const [branch] = await db
+      .select({
+        upVotes: branches.upVotes,
+        downVotes: branches.downVotes,
+      })
+      .from(branches)
+      .where(eq(branches.id, branchId));
+
+    let userVote: number | null = null;
+    if (userId) {
+      const existing = await this.getUserVote(userId, branchId);
+      const vote = existing?.vote;
+      userVote = vote === 1 || vote === -1 ? vote : null;
+    }
+
+    return {
+      upVotes: branch?.upVotes ?? 0,
+      downVotes: branch?.downVotes ?? 0,
+      userVote,
+    };
+  },
 };

@@ -54,10 +54,12 @@ export const VotesController = {
         });
       }
       
-      const result = await VotesService.vote(userId, branchId, voteNum);
+      await VotesService.vote(userId, branchId, voteNum);
+      const summary = await VotesService.summary(branchId, userId);
       return res.status(200).json({
+        success: true,
         message: "Vote recorded successfully",
-        data: result
+        data: summary
       });
     } catch (err: any) { 
       // Handle specific errors
@@ -82,8 +84,10 @@ export const VotesController = {
         });
       }
       
-      const result = await VotesService.counts(branchId);
+      const userId = req.user?.id;
+      const result = await VotesService.summary(branchId, userId);
       return res.status(200).json({
+        success: true,
         message: "Vote counts retrieved successfully",
         data: result
       });

@@ -179,6 +179,9 @@ router.post("/forgot-password", authRouteLimiter, UsersController.forgotPassword
  */
 router.get("/", authMiddleware, adminMiddleware, UsersController.list);
 
+router.get("/me", authMiddleware, UsersController.me);
+router.patch("/me", authMiddleware, UsersController.updateMe);
+
 /**
  * @swagger
  * /api/users/{id}:

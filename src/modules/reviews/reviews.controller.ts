@@ -19,6 +19,27 @@ export const ReviewsController = {
     }
   },
 
+  async listForRestaurant(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { restaurantId } = req.params;
+      const limit = Number(req.query.limit ?? 50);
+      const offset = Number(req.query.offset ?? 0);
+      if (!restaurantId) {
+        return res
+          .status(400)
+          .json({ success: false, message: "restaurantId is required" });
+      }
+      const data = await ReviewsService.listForRestaurant(
+        restaurantId,
+        limit,
+        offset,
+      );
+      return res.json(data);
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async upsert(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = req.user?.id;

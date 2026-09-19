@@ -1,8 +1,20 @@
 import { Request, Response, NextFunction } from "express";
 import { AreasService } from "./areas.service";
+import {
+  MAX_BULK_ROWS,
+  buildBulkTemplate,
+  parseBulkExcel,
+  runBulkExcelUpload,
+  sendExcel,
+  type BulkColumn,
+} from "../shared/bulkExcel";
 
 const MAX_NAME = 255;
-const MAX_BULK = 50;
+
+const AREA_COLUMNS: BulkColumn[] = [
+  { key: "nameEn", required: true, note: "English area name", width: 28 },
+  { key: "nameAr", required: true, note: "Arabic area name", width: 28 },
+];
 
 function parseAreaItem(
   raw: unknown,
@@ -62,10 +74,10 @@ export const AreasController = {
           message: "items must be a non-empty array",
         });
       }
-      if (rawItems.length > MAX_BULK) {
+      if (rawItems.length > MAX_BULK_ROWS) {
         return res.status(400).json({
           success: false,
-          message: `At most ${MAX_BULK} items per request`,
+          message: `At most ${MAX_BULK_ROWS} items per request`,
         });
       }
       const items: { nameEn: string; nameAr: string }[] = [];
@@ -79,6 +91,40 @@ export const AreasController = {
       const result = await AreasService.createBulk(items);
       return res.status(201).json(result);
     } catch (err) {
+      next(err);
+    }
+  },
+
+  async downloadTemplate(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const buffer = await buildBulkTemplate({
+        sheetName: "areas",
+        columns: AREA_COLUMNS,
+      });
+      sendExcel(res, "areas_template.xlsx", buffer);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async uploadExcel(req: Request, res: Response, next: NextFunction) {
+    try {
+      const file = await runBulkExcelUpload(req, res);
+      const rows = await parseBulkExcel(file.buffer, "areas");
+      const items: { nameEn: string; nameAr: string }[] = [];
+      for (let i = 0; i < rows.length; i++) {
+        const parsed = parseAreaItem(rows[i], i);
+        if (!parsed.ok) {
+          return res.status(400).json({ success: false, message: parsed.message });
+        }
+        items.push(parsed.value);
+      }
+      const result = await AreasService.createBulk(items);
+      return res.status(201).json(result);
+    } catch (err) {
+      if (err instanceof Error && err.message) {
+        return res.status(400).json({ success: false, message: err.message });
+      }
       next(err);
     }
   },

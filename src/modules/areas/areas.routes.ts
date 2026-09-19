@@ -11,6 +11,20 @@ router.post(
   AreasController.create,
 );
 
+router.get(
+  "/bulk/template",
+  authMiddleware,
+  adminMiddleware,
+  AreasController.downloadTemplate,
+);
+
+router.post(
+  "/bulk/upload",
+  authMiddleware,
+  adminMiddleware,
+  AreasController.uploadExcel,
+);
+
 router.post(
   "/bulk",
   authMiddleware,

@@ -45,6 +45,20 @@ router.post(
   RestaurantsController.create,
 );
 
+router.get(
+  "/bulk/template",
+  authMiddleware,
+  adminMiddleware,
+  RestaurantsController.downloadTemplate,
+);
+
+router.post(
+  "/bulk/upload",
+  authMiddleware,
+  adminMiddleware,
+  RestaurantsController.uploadExcel,
+);
+
 router.post(
   "/bulk",
   authMiddleware,

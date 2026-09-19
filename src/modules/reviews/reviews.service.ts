@@ -1,6 +1,6 @@
 import { and, avg, count, desc, eq } from "drizzle-orm";
 import { db } from "../../db/client";
-import { reviews, users } from "../../db/schema";
+import { branches, reviews, users } from "../../db/schema";
 
 export class ReviewsService {
   static async listForBranch(branchId: string, limit = 20, offset = 0) {
@@ -12,6 +12,7 @@ export class ReviewsService {
         createdAt: reviews.createdAt,
         userId: users.id,
         userName: users.name,
+        branchId: reviews.branchId,
       })
       .from(reviews)
       .innerJoin(users, eq(reviews.userId, users.id))
@@ -27,6 +28,47 @@ export class ReviewsService {
       })
       .from(reviews)
       .where(eq(reviews.branchId, branchId));
+
+    return {
+      reviews: rows,
+      summary: {
+        avgRating: Number(summary?.avgRating ?? 0),
+        total: Number(summary?.total ?? 0),
+      },
+    };
+  }
+
+  static async listForRestaurant(
+    restaurantId: string,
+    limit = 50,
+    offset = 0,
+  ) {
+    const rows = await db
+      .select({
+        id: reviews.id,
+        rating: reviews.rating,
+        comment: reviews.comment,
+        createdAt: reviews.createdAt,
+        userId: users.id,
+        userName: users.name,
+        branchId: reviews.branchId,
+      })
+      .from(reviews)
+      .innerJoin(users, eq(reviews.userId, users.id))
+      .innerJoin(branches, eq(reviews.branchId, branches.id))
+      .where(eq(branches.restaurantId, restaurantId))
+      .orderBy(desc(reviews.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const [summary] = await db
+      .select({
+        avgRating: avg(reviews.rating),
+        total: count(reviews.id),
+      })
+      .from(reviews)
+      .innerJoin(branches, eq(reviews.branchId, branches.id))
+      .where(eq(branches.restaurantId, restaurantId));
 
     return {
       reviews: rows,
@@ -55,7 +97,7 @@ export class ReviewsService {
           userId,
           branchId,
           rating,
-          comment: comment ?? null,
+          comment: comment?.trim() || null,
         })
         .returning();
       return row;
@@ -65,7 +107,9 @@ export class ReviewsService {
       .update(reviews)
       .set({
         rating,
-        comment: comment ?? existing.comment,
+        comment:
+          comment === undefined ? existing.comment : comment.trim() || null,
+        updatedAt: new Date(),
       })
       .where(eq(reviews.id, existing.id))
       .returning();

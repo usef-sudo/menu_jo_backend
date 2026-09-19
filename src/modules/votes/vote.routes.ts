@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { VotesController } from "./vote.controller";
-import { authMiddleware } from "../../middlewares/auth.middleware";
+import { authMiddleware, optionalAuthMiddleware } from "../../middlewares/auth.middleware";
 
 const router = Router({ mergeParams: true });
 /**
@@ -71,6 +71,6 @@ router.post("/branches/:branchId/vote", authMiddleware, VotesController.vote);
  *                   type: integer
  *                   description: Total downvotes
  */
-router.get("/branches/:branchId/votes", VotesController.counts); // Public route
+router.get("/branches/:branchId/votes", optionalAuthMiddleware, VotesController.counts); // Public route
 
 export default router;

@@ -2,10 +2,41 @@ import { Request, Response, NextFunction } from "express";
 import { BranchesService, parseHmToMinutes, type CreateBranchDTO } from "./branches.service";
 import { isUuid, trimToNull } from "../shared/httpValidation";
 import type { OpeningHourInput } from "./branchOpeningHours.util";
+import { AreasService } from "../areas/areas.service";
+import { RestaurantsService } from "../restaurants/restaurants.service";
+import {
+  MAX_BULK_ROWS,
+  buildBulkTemplate,
+  parseBulkExcel,
+  runBulkExcelUpload,
+  sendExcel,
+  type BulkColumn,
+} from "../shared/bulkExcel";
 
 const MAX_NAME = 255;
 const MAX_ADDRESS = 500;
 const MAX_TIME = 16;
+
+const BRANCH_COLUMNS: BulkColumn[] = [
+  {
+    key: "restaurantNameEn",
+    required: true,
+    note: "English restaurant name (must match restaurants_lookup). Or use restaurantId.",
+    width: 28,
+  },
+  { key: "restaurantId", note: "Optional restaurant UUID if not using restaurantNameEn", width: 38 },
+  { key: "nameEn", required: true, note: "English branch name", width: 28 },
+  { key: "nameAr", required: true, note: "Arabic branch name", width: 28 },
+  { key: "areaNameEn", note: "English area name from areas_lookup (optional)", width: 24 },
+  { key: "areaId", note: "Optional area UUID if not using areaNameEn", width: 38 },
+  { key: "address", note: "Street address", width: 36 },
+  { key: "latitude", note: "Latitude", width: 14 },
+  { key: "longitude", note: "Longitude", width: 14 },
+  { key: "costLevel", note: "1 (cheap) to 5 (expensive)", width: 12 },
+  { key: "isOpen", note: "1 = open, 0 = closed", width: 10 },
+  { key: "openTime", note: "Legacy open time HH:MM", width: 14 },
+  { key: "closeTime", note: "Legacy close time HH:MM", width: 14 },
+];
 
 const OPENING_HOUR_ERROR_MESSAGES: Record<string, string> = {
   INVALID_DAY_OF_WEEK: "dayOfWeek must be 1–7 (Monday–Sunday)",
@@ -67,6 +98,124 @@ function parseFacilityIds(raw: unknown): string[] | undefined {
     if (!isUuid(id)) throw new Error("INVALID_FACILITY_IDS");
   }
   return ids;
+}
+
+type NameLookup = { id: string; nameEn: string; nameAr: string };
+
+function asLookup(row: Record<string, unknown>): NameLookup {
+  return {
+    id: String(row.id ?? ""),
+    nameEn: String(row.nameEn ?? row.name_en ?? ""),
+    nameAr: String(row.nameAr ?? row.name_ar ?? ""),
+  };
+}
+
+function matchLookup(list: NameLookup[], name: string): NameLookup | undefined {
+  const n = name.trim().toLowerCase();
+  if (!n) return undefined;
+  return list.find(
+    (item) =>
+      item.nameEn.trim().toLowerCase() === n ||
+      item.nameAr.trim().toLowerCase() === n,
+  );
+}
+
+async function loadBranchLookups(): Promise<{
+  restaurants: NameLookup[];
+  areas: NameLookup[];
+}> {
+  const [restRaw, areaRaw] = await Promise.all([
+    RestaurantsService.list({}, 500, 0),
+    AreasService.list(),
+  ]);
+  return {
+    restaurants: (restRaw as unknown as Record<string, unknown>[]).map(asLookup),
+    areas: (areaRaw as unknown as Record<string, unknown>[]).map(asLookup),
+  };
+}
+
+function parseBulkBranchItem(
+  body: Record<string, unknown>,
+  index: number,
+  lookups: { restaurants: NameLookup[]; areas: NameLookup[] },
+): { ok: true; value: CreateBranchDTO } | { ok: false; message: string } {
+  let restaurantId = String(body.restaurantId ?? "").trim();
+  if (!isUuid(restaurantId)) {
+    const named = String(body.restaurantNameEn ?? body.restaurantName ?? "").trim();
+    const match = matchLookup(lookups.restaurants, named);
+    if (!match) {
+      return {
+        ok: false,
+        message: `Item ${index}: valid restaurantId or matching restaurantNameEn is required`,
+      };
+    }
+    restaurantId = match.id;
+  }
+
+  const nameEn = String(body.nameEn ?? "").trim();
+  const nameAr = String(body.nameAr ?? "").trim();
+  if (!nameEn || !nameAr) {
+    return {
+      ok: false,
+      message: `Item ${index}: both English and Arabic names are required`,
+    };
+  }
+
+  let areaId: string | null | undefined;
+  const rawAreaId = String(body.areaId ?? "").trim();
+  const areaName = String(body.areaNameEn ?? body.areaName ?? "").trim();
+  if (isUuid(rawAreaId)) {
+    areaId = rawAreaId;
+  } else if (areaName) {
+    const match = matchLookup(lookups.areas, areaName);
+    if (!match) {
+      return {
+        ok: false,
+        message: `Item ${index}: unknown areaNameEn "${areaName}"`,
+      };
+    }
+    areaId = match.id;
+  } else if (body.areaId === null || body.areaId === "") {
+    areaId = null;
+  }
+
+  let costLevel: number | undefined;
+  if (body.costLevel !== undefined && body.costLevel !== null && body.costLevel !== "") {
+    const n = Number(body.costLevel);
+    if (!Number.isInteger(n) || n < 1 || n > 5) {
+      return {
+        ok: false,
+        message: `Item ${index}: costLevel must be an integer from 1 to 5`,
+      };
+    }
+    costLevel = n;
+  }
+
+  let isOpen: number | undefined;
+  if (body.isOpen !== undefined && body.isOpen !== null && body.isOpen !== "") {
+    const n = Number(body.isOpen);
+    if (n !== 0 && n !== 1) {
+      return { ok: false, message: `Item ${index}: isOpen must be 0 or 1` };
+    }
+    isOpen = n;
+  }
+
+  return {
+    ok: true,
+    value: {
+      restaurantId,
+      nameEn,
+      nameAr,
+      areaId,
+      address: trimToNull(body.address) ?? undefined,
+      latitude: trimToNull(body.latitude) ?? undefined,
+      longitude: trimToNull(body.longitude) ?? undefined,
+      costLevel,
+      isOpen,
+      openTime: trimToNull(body.openTime) ?? undefined,
+      closeTime: trimToNull(body.closeTime) ?? undefined,
+    },
+  };
 }
 
 export const BranchesController = {
@@ -221,13 +370,14 @@ export const BranchesController = {
           message: "items must be a non-empty array",
         });
       }
-      if (rawItems.length > 50) {
+      if (rawItems.length > MAX_BULK_ROWS) {
         return res.status(400).json({
           success: false,
-          message: "At most 50 items per request",
+          message: `At most ${MAX_BULK_ROWS} items per request`,
         });
       }
 
+      const lookups = await loadBranchLookups();
       const items: CreateBranchDTO[] = [];
       for (let i = 0; i < rawItems.length; i++) {
         const raw = rawItems[i];
@@ -237,61 +387,64 @@ export const BranchesController = {
             message: `Item ${i}: invalid object`,
           });
         }
-        const body = raw as Record<string, unknown>;
-        const restaurantId = String(body.restaurantId ?? "").trim();
-        if (!restaurantId || !isUuid(restaurantId)) {
-          return res.status(400).json({
-            success: false,
-            message: `Item ${i}: valid restaurantId is required`,
-          });
+        const parsed = parseBulkBranchItem(raw as Record<string, unknown>, i, lookups);
+        if (!parsed.ok) {
+          return res.status(400).json({ success: false, message: parsed.message });
         }
-        const nameEn = String(body.nameEn ?? "").trim();
-        const nameAr = String(body.nameAr ?? "").trim();
-        if (!nameEn || !nameAr) {
-          return res.status(400).json({
-            success: false,
-            message: `Item ${i}: both English and Arabic names are required`,
-          });
-        }
-        let areaId: string | null | undefined;
-        if (body.areaId !== undefined && body.areaId !== null && body.areaId !== "") {
-          const aid = String(body.areaId).trim();
-          if (!isUuid(aid)) {
-            return res.status(400).json({
-              success: false,
-              message: `Item ${i}: areaId must be a valid UUID`,
-            });
-          }
-          areaId = aid;
-        } else if (body.areaId === null || body.areaId === "") {
-          areaId = null;
-        }
-        let costLevel: number | undefined;
-        if (body.costLevel !== undefined && body.costLevel !== null && body.costLevel !== "") {
-          const n = Number(body.costLevel);
-          if (!Number.isInteger(n) || n < 1 || n > 5) {
-            return res.status(400).json({
-              success: false,
-              message: `Item ${i}: costLevel must be an integer from 1 to 5`,
-            });
-          }
-          costLevel = n;
-        }
-        items.push({
-          restaurantId,
-          nameEn,
-          nameAr,
-          areaId,
-          address: trimToNull(body.address) ?? undefined,
-          latitude: trimToNull(body.latitude) ?? undefined,
-          longitude: trimToNull(body.longitude) ?? undefined,
-          costLevel,
-        });
+        items.push(parsed.value);
       }
 
       const result = await BranchesService.createBulk(items);
       return res.status(201).json(result);
     } catch (err) {
+      next(err);
+    }
+  },
+
+  async downloadTemplate(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const lookups = await loadBranchLookups();
+      const buffer = await buildBulkTemplate({
+        sheetName: "branches",
+        columns: BRANCH_COLUMNS,
+        lookupSheets: [
+          {
+            name: "restaurants_lookup",
+            headers: ["id", "nameEn", "nameAr"],
+            rows: lookups.restaurants.map((r) => [r.id, r.nameEn, r.nameAr]),
+          },
+          {
+            name: "areas_lookup",
+            headers: ["id", "nameEn", "nameAr"],
+            rows: lookups.areas.map((a) => [a.id, a.nameEn, a.nameAr]),
+          },
+        ],
+      });
+      sendExcel(res, "branches_template.xlsx", buffer);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async uploadExcel(req: Request, res: Response, next: NextFunction) {
+    try {
+      const file = await runBulkExcelUpload(req, res);
+      const rows = await parseBulkExcel(file.buffer, "branches");
+      const lookups = await loadBranchLookups();
+      const items: CreateBranchDTO[] = [];
+      for (let i = 0; i < rows.length; i++) {
+        const parsed = parseBulkBranchItem(rows[i], i, lookups);
+        if (!parsed.ok) {
+          return res.status(400).json({ success: false, message: parsed.message });
+        }
+        items.push(parsed.value);
+      }
+      const result = await BranchesService.createBulk(items);
+      return res.status(201).json(result);
+    } catch (err) {
+      if (err instanceof Error && err.message) {
+        return res.status(400).json({ success: false, message: err.message });
+      }
       next(err);
     }
   },

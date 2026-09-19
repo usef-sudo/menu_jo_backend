@@ -114,6 +114,31 @@ export const UsersService = {
       .where(eq(refreshTokens.token, token));
   },
 
+  async updateMe(
+    userId: string,
+    dto: {
+      name?: string;
+      birthDate?: string;
+      gender?: string;
+      phoneNumber?: string;
+    },
+  ) {
+    const patch: Partial<typeof users.$inferInsert> = {};
+    if (dto.name !== undefined) patch.name = dto.name;
+    if (dto.birthDate !== undefined) patch.birthDate = dto.birthDate;
+    if (dto.gender !== undefined) patch.gender = dto.gender;
+    if (dto.phoneNumber !== undefined) patch.phoneNumber = dto.phoneNumber;
+    if (Object.keys(patch).length === 0) {
+      return this.findById(userId);
+    }
+    const [row] = await db
+      .update(users)
+      .set(patch)
+      .where(eq(users.id, userId))
+      .returning();
+    return row ?? null;
+  },
+
   /** Strip password hash from API responses. */
   toSafeUser(row: (typeof users.$inferSelect) | null) {
     if (!row) return null;

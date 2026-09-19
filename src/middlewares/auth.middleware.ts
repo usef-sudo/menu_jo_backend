@@ -57,3 +57,26 @@ export const adminMiddleware = (
   }
   return next();
 };
+
+export const optionalAuthMiddleware = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return next();
+  }
+  try {
+    const token = authHeader.split(" ")[1];
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET as string,
+    ) as JwtPayload;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (req as any).user = decoded;
+  } catch {
+    // Public vote counts still work without a valid token.
+  }
+  return next();
+};
