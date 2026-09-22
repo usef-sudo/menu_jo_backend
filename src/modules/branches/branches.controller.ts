@@ -515,7 +515,7 @@ export const BranchesController = {
           openAtWeekday,
           openAtTimeMinutes,
         },
-        Number(req.query.limit || 50),
+        Number(req.query.limit || 200),
         Number(req.query.offset || 0),
       );
       return res.json(rows);
@@ -720,9 +720,28 @@ export const BranchesController = {
         });
       }
 
-      const limit = Number(req.query.limit || 50);
+      const limit = Number(req.query.limit || 200);
       const offset = Number(req.query.offset || 0);
-      const rows = await BranchesService.listNearby(latitude, longitude, limit, offset);
+      const radiusRaw = req.query.radiusKm ?? req.query.radius_km;
+      const radiusKm =
+        radiusRaw === undefined || radiusRaw === ""
+          ? undefined
+          : Number(radiusRaw);
+      if (radiusKm !== undefined && (!Number.isFinite(radiusKm) || radiusKm < 0)) {
+        return res.status(400).json({
+          success: false,
+          message: "radiusKm must be a non-negative number",
+        });
+      }
+      const openNowRaw = String(req.query.openNow ?? req.query.open_now ?? "");
+      const openNow = openNowRaw === "true" || openNowRaw === "1";
+      const rows = await BranchesService.listNearby(
+        latitude,
+        longitude,
+        limit,
+        offset,
+        { radiusKm, openNow },
+      );
 
       return res.json({
         success: true,

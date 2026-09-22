@@ -5,10 +5,12 @@ import {
   categories,
   branches,
   branchFacilities,
+  branchOpeningHours,
   facilities,
   reviews,
 } from "../../db/schema";
-import { eq, and, sql, ilike, or, gte, lte, desc, inArray, avg, count } from "drizzle-orm";
+import { eq, and, sql, ilike, or, gte, lte, desc, inArray, avg, count, asc } from "drizzle-orm";
+import { computeOpenNow } from "../branches/branchOpeningHours.util";
 
 export interface CreateRestaurantDTO {
   nameEn: string;
@@ -157,7 +159,7 @@ export const RestaurantsService = {
       sort?: string;
       facilityIds?: string[];
     } = {},
-    limit = 50,
+    limit = 200,
     offset = 0,
   ) {
     // Simple text search on name
@@ -220,10 +222,6 @@ export const RestaurantsService = {
       conditions.push(lte(branches.costLevel, filter.maxCostLevel));
     }
 
-    if (filter.openOnly) {
-      conditions.push(eq(branches.isOpen, 1));
-    }
-
     const whereClause =
       conditions.length === 0 ? undefined : and(...conditions);
 
@@ -240,7 +238,14 @@ export const RestaurantsService = {
       .limit(limit)
       .offset(offset);
 
-    return rows;
+    if (!filter.openOnly) {
+      return rows;
+    }
+
+    const openIds = await restaurantIdsWithOpenBranchNow(
+      rows.map((r) => r.id),
+    );
+    return rows.filter((r) => openIds.has(r.id));
   },
 
   async getDetails(id: string) {
@@ -324,3 +329,62 @@ export const RestaurantsService = {
     };
   },
 };
+
+async function restaurantIdsWithOpenBranchNow(
+  restaurantIds: string[],
+): Promise<Set<string>> {
+  const unique = [...new Set(restaurantIds.filter(Boolean))];
+  if (unique.length === 0) return new Set();
+
+  const branchRows = await db
+    .select({
+      id: branches.id,
+      restaurantId: branches.restaurantId,
+      isOpen: branches.isOpen,
+      openTime: branches.openTime,
+      closeTime: branches.closeTime,
+    })
+    .from(branches)
+    .where(inArray(branches.restaurantId, unique));
+
+  const hoursMap = new Map<
+    string,
+    Array<{
+      dayOfWeek: number;
+      openTime: string;
+      closeTime: string;
+      closesNextDay: boolean;
+    }>
+  >();
+  if (branchRows.length > 0) {
+    const hourRows = await db
+      .select()
+      .from(branchOpeningHours)
+      .where(inArray(branchOpeningHours.branchId, branchRows.map((r) => r.id)))
+      .orderBy(asc(branchOpeningHours.dayOfWeek), asc(branchOpeningHours.slotIndex));
+    for (const h of hourRows) {
+      const list = hoursMap.get(h.branchId) ?? [];
+      list.push({
+        dayOfWeek: h.dayOfWeek,
+        openTime: h.openTime,
+        closeTime: h.closeTime,
+        closesNextDay: h.closesNextDay === 1,
+      });
+      hoursMap.set(h.branchId, list);
+    }
+  }
+
+  const openIds = new Set<string>();
+  for (const b of branchRows) {
+    if (!b.restaurantId || openIds.has(b.restaurantId)) continue;
+    const hours = hoursMap.get(b.id) ?? [];
+    const open = computeOpenNow({
+      isOpen: b.isOpen,
+      openingHours: hours,
+      openTime: b.openTime,
+      closeTime: b.closeTime,
+    });
+    if (open) openIds.add(b.restaurantId);
+  }
+  return openIds;
+}

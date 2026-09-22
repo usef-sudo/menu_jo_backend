@@ -292,7 +292,7 @@ export const RestaurantsController = {
           sort,
           facilityIds,
         },
-        Number(req.query.limit || 50),
+        Number(req.query.limit || 200),
         Number(req.query.offset || 0),
       );
       return res.json(rows);

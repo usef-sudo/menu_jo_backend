@@ -14,6 +14,10 @@ import {
   validateOpeningSlot,
   type OpeningHourInput,
 } from "./branchOpeningHours.util";
+import { haversineKm } from "./geo.util";
+
+/** Scan cap so nearby sorts all coords, not an arbitrary first page. */
+const NEARBY_SCAN_CAP = 1000;
 
 export interface CreateBranchDTO {
   restaurantId: string;
@@ -457,39 +461,82 @@ export const BranchesService = {
     }));
   },
 
-  async listNearby(lat: number, lng: number, limit = 50, offset = 0) {
-    const rows = await this.list({}, limit, offset);
+  /**
+   * Restaurant IDs that have at least one branch open now (schedule + admin flag).
+   */
+  async restaurantIdsWithOpenBranchNow(
+    restaurantIds: string[],
+  ): Promise<Set<string>> {
+    const unique = [...new Set(restaurantIds.filter(Boolean))];
+    if (unique.length === 0) return new Set();
 
-    const toRadians = (deg: number) => (deg * Math.PI) / 180;
+    const branchRows = await db
+      .select({
+        id: branches.id,
+        restaurantId: branches.restaurantId,
+        isOpen: branches.isOpen,
+        openTime: branches.openTime,
+        closeTime: branches.closeTime,
+      })
+      .from(branches)
+      .where(inArray(branches.restaurantId, unique));
 
-    const withDistance = rows
+    const hoursMap = await loadOpeningHoursMap(branchRows.map((r) => r.id));
+    const openIds = new Set<string>();
+    for (const b of branchRows) {
+      if (!b.restaurantId || openIds.has(b.restaurantId)) continue;
+      const hours = hoursMap.get(b.id) ?? [];
+      const open = computeOpenNow({
+        isOpen: b.isOpen,
+        openingHours: hours.map((h) => ({
+          dayOfWeek: h.dayOfWeek,
+          openTime: h.openTime,
+          closeTime: h.closeTime,
+          closesNextDay: h.closesNextDay,
+        })),
+        openTime: b.openTime,
+        closeTime: b.closeTime,
+      });
+      if (open) openIds.add(b.restaurantId);
+    }
+    return openIds;
+  },
+
+  async listNearby(
+    lat: number,
+    lng: number,
+    limit = 50,
+    offset = 0,
+    opts: { radiusKm?: number; openNow?: boolean } = {},
+  ) {
+    const rows = await this.list({}, NEARBY_SCAN_CAP, 0);
+
+    let withDistance = rows
       .map((b) => {
         if (!b.latitude || !b.longitude) {
-          return { ...b, distanceKm: null };
+          return { ...b, distanceKm: null as number | null };
         }
         const lat1 = Number.parseFloat(b.latitude);
         const lon1 = Number.parseFloat(b.longitude);
-        const lat2 = lat;
-        const lon2 = lng;
-
-        const R = 6371; // km
-        const dLat = toRadians(lat2 - lat1);
-        const dLon = toRadians(lon2 - lon1);
-        const a =
-          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-          Math.cos(toRadians(lat1)) *
-            Math.cos(toRadians(lat2)) *
-            Math.sin(dLon / 2) *
-            Math.sin(dLon / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        const d = R * c;
-
+        if (!Number.isFinite(lat1) || !Number.isFinite(lon1)) {
+          return { ...b, distanceKm: null as number | null };
+        }
+        const d = haversineKm(lat1, lon1, lat, lng);
         return { ...b, distanceKm: Number(d.toFixed(2)) };
       })
-      .filter((b) => b.distanceKm !== null)
-      .sort((a, b) => a.distanceKm! - b.distanceKm!);
+      .filter((b) => b.distanceKm !== null);
 
-    return withDistance;
+    const radiusKm = opts.radiusKm;
+    if (radiusKm !== undefined && Number.isFinite(radiusKm) && radiusKm >= 0) {
+      withDistance = withDistance.filter((b) => b.distanceKm! <= radiusKm);
+    }
+    if (opts.openNow) {
+      withDistance = withDistance.filter((b) => b.openNow === true);
+    }
+
+    withDistance.sort((a, b) => a.distanceKm! - b.distanceKm!);
+    const start = Math.max(0, offset);
+    return withDistance.slice(start, start + limit);
   },
 
   async incrementVoteCounters(branchId: string, up: number, down: number) {
